@@ -11,7 +11,10 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 class Linkedin:
     def __init__(self):
             prYellow("🌐 Bot will run in Chrome browser and log in Linkedin for you.")
-            self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=utils.chromeBrowserOptions())
+            chrome_options = utils.chromeBrowserOptions()
+            # chrome_options.add_argument("--headless")
+            self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=chrome_options)
+            # self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=utils.chromeBrowserOptions())
             self.driver.get("https://www.linkedin.com/login?trk=guest_homepage-basic_nav-header-signin")
 
             prYellow("🔄 Trying to log in Linkedin...")
@@ -105,7 +108,8 @@ class Linkedin:
                                     lineToWrite = jobProperties + " | " + result
                                     self.displayWriteResults(lineToWrite)
                                 
-                                except Exception: 
+                                except Exception as e: 
+                                    print(f"exception + {str(e)}")
                                     self.chooseResume()
                                     lineToWrite = jobProperties + " | " + "* 🥵 Cannot apply to this Job! " +str(offerPage)
                                     self.displayWriteResults(lineToWrite)
