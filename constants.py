@@ -11,7 +11,9 @@ fast = 2
 medium = 3
 slow = 5 
 
-botSpeed = slow
+# botSpeed = slow
+# botSpeed = 1
+botSpeed = 1
 
 # Webdriver Elements 
 jobsPageUrl = "https://www.linkedin.com/jobs"

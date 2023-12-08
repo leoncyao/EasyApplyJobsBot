@@ -3,10 +3,14 @@ import utils,constants,config
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import Select
 from utils import prRed,prYellow,prGreen
 
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.common.action_chains import ActionChains
+
+
 
 class Linkedin:
     def __init__(self):
@@ -24,7 +28,7 @@ class Linkedin:
                 self.driver.find_element("id","password").send_keys(config.password)
                 time.sleep(2)
                 self.driver.find_element("xpath",'//button[@type="submit"]').click()
-                time.sleep(5)
+                time.sleep(20)
                 self.linkJobApply()
             except:
                 prRed("❌ Couldn't log in Linkedin by using Chrome. Please check your Linkedin credentials on config files line 7 and 8.")
@@ -49,6 +53,7 @@ class Linkedin:
         urlData = utils.getUrlDataFile()
 
         for url in urlData:        
+
             self.driver.get(url)
             time.sleep(random.uniform(1, constants.botSpeed))
 
@@ -72,6 +77,7 @@ class Linkedin:
 
                 for jobID in offerIds:
                     offerPage = 'https://www.linkedin.com/jobs/view/' + str(jobID)
+                    # offerPage = "https://www.linkedin.com/jobs/view/3766033127"
                     self.driver.get(offerPage)
                     time.sleep(random.uniform(1, constants.botSpeed))
 
@@ -113,6 +119,8 @@ class Linkedin:
                                     self.chooseResume()
                                     lineToWrite = jobProperties + " | " + "* 🥵 Cannot apply to this Job! " +str(offerPage)
                                     self.displayWriteResults(lineToWrite)
+                                    g = open('data/url_fail_cases.txt', 'a')
+                                    g.write("\n" + str(offerPage) + '\n')
                         else:
                             lineToWrite = jobProperties + " | " + "* 🥳 Already applied! Job: " +str(offerPage)
                             self.displayWriteResults(lineToWrite)
@@ -190,11 +198,62 @@ class Linkedin:
 
         return EasyApplyButton
 
+    def continueButton(self):
+        try:
+            time.sleep(random.uniform(1, constants.botSpeed))
+            button = self.driver.find_element(By.CSS_SELECTOR, "button[aria-label='Continue to next step']")
+            EasyApplyButton = button
+        except: 
+            EasyApplyButton = False
+
+        return EasyApplyButton
     def applyProcess(self, percentage, offerPage):
-        applyPages = math.floor(100 / percentage) - 2 
+        # applyPages = math.floor(100 / percentage) - 2 
+        applyPages = math.floor(100 / percentage) 
+        # /html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div/div[2]/div/div/div[1]/div/input
         result = ""
-        for pages in range(applyPages):  
-            self.driver.find_element(By.CSS_SELECTOR, "button[aria-label='Continue to next step']").click()
+
+        while self.continueButton():
+            self.continueButton().click()
+            # asdf = self.driver.find_elements_by_tag_name("input")
+            # artdeco-modal-outlet
+            # dialog = self.driver.find_element(By.ID, "artdeco-modal-outlet")
+            # dialog = self.driver.find_element(By.CSS_SELECTOR, "div[aria-labelledby='jobs-apply-header']")
+            dialog = self.driver.find_element(By.CLASS_NAME, "jobs-easy-apply-content")
+            # print("id is " + dialog.get_attribute('id'))
+            # print("inner_HTML is " + dialog.get_attribute('innerHTML'))
+            input_fields = dialog.find_elements(By.TAG_NAME, "input")
+            radio_fields = []
+            for input_field in input_fields:
+                if input_field.get_attribute("type") == "text":
+                    input_field.send_keys("1")   
+                elif input_field.get_attribute("type") == "radio":
+                    if "Y" in input_field.get_attribute("value") or "y" in input_field.get_attribute("value"):
+                        radio_fields.append(input_field)
+            for radio_field in radio_fields:
+                ActionChains(self.driver).click(radio_field).perform()
+            # for input_field in input_fields:       
+            #     time.sleep(random.uniform(1, constants.botSpeed))
+            #     print("type of input is " + input_field.get_attribute("type"))
+            #     if input_field.get_attribute("type") == "text":
+            #         input_field.send_keys("1")   
+            #     elif input_field.get_attribute("type") == "radio":
+            #         print(input_field.get_attribute("value"))
+            #         if "Y" in input_field.get_attribute("value") or "y" in input_field.get_attribute("value"):
+            #             # input_field.click()
+            #             ActionChains(self.driver).click(input_field).perform()
+                        # self.driver.execute_script("arguments[0].checked = !arguments[0].checked;", input_field)
+            select_fields = dialog.find_elements(By.TAG_NAME, "select")
+            for select_field in select_fields:
+                Select(select_field).select_by_index(1)
+            # for input_field in input_fields:       
+            #     time.sleep(random.uniform(1, constants.botSpeed))
+            #     input_field.send_keys("1")   
+                                                                
+            # username_input_field = self.driver.find_element("id", "userNameInput")
+            # username_input_field.send_keys("lclyao@uwaterloo.ca")
+            
+
 
         self.driver.find_element( By.CSS_SELECTOR, "button[aria-label='Review your application']").click()
         time.sleep(random.uniform(1, constants.botSpeed))
