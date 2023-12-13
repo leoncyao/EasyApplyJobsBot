@@ -10,22 +10,30 @@ from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
 from selenium.webdriver.common.action_chains import ActionChains
 
+from selenium.webdriver.common.keys import Keys
 
+import argparse
 
 class Linkedin:
-    def __init__(self):
+    def __init__(self, email=config.email, password=config.password, jobID=-1, headless=True):
             prYellow("🌐 Bot will run in Chrome browser and log in Linkedin for you.")
             chrome_options = utils.chromeBrowserOptions()
-            # chrome_options.add_argument("--headless")
+            if headless:
+                chrome_options.add_argument("--headless")
             self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=chrome_options)
             # self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=utils.chromeBrowserOptions())
             self.driver.get("https://www.linkedin.com/login?trk=guest_homepage-basic_nav-header-signin")
 
             prYellow("🔄 Trying to log in Linkedin...")
+            if jobID != -1:
+                self.url = 'https://www.linkedin.com/jobs/view/' + str(jobID)
+            else:
+                self.url = ""
+
             try:    
-                self.driver.find_element("id","username").send_keys(config.email)
+                self.driver.find_element("id","username").send_keys(email)
                 time.sleep(2)
-                self.driver.find_element("id","password").send_keys(config.password)
+                self.driver.find_element("id","password").send_keys(password)
                 time.sleep(2)
                 self.driver.find_element("xpath",'//button[@type="submit"]').click()
                 time.sleep(20)
@@ -53,16 +61,18 @@ class Linkedin:
         urlData = utils.getUrlDataFile()
 
         for url in urlData:        
-
+            print(f"URL IS \n {url} \n")
             self.driver.get(url)
             time.sleep(random.uniform(1, constants.botSpeed))
-
+            # time.sleep(100)
             totalJobs = self.driver.find_element(By.XPATH,'//small').text 
             totalPages = utils.jobsToPages(totalJobs)
 
             urlWords =  utils.urlToKeywords(url)
             lineToWrite = "\n Category: " + urlWords[0] + ", Location: " +urlWords[1] + ", Applying " +str(totalJobs)+ " jobs."
             self.displayWriteResults(lineToWrite)
+
+
 
             for page in range(totalPages):
                 currentPageJobs = constants.jobsPerPage * page
@@ -76,8 +86,11 @@ class Linkedin:
                 time.sleep(random.uniform(1, constants.botSpeed))
 
                 for jobID in offerIds:
-                    offerPage = 'https://www.linkedin.com/jobs/view/' + str(jobID)
-                    # offerPage = "https://www.linkedin.com/jobs/view/3766033127"
+                    print("TEST" + self.url)
+                    if self.url == "":
+                        offerPage = 'https://www.linkedin.com/jobs/view/' + str(jobID)
+                    else:
+                        offerPage = self.url
                     self.driver.get(offerPage)
                     time.sleep(random.uniform(1, constants.botSpeed))
 
@@ -124,10 +137,12 @@ class Linkedin:
                         else:
                             lineToWrite = jobProperties + " | " + "* 🥳 Already applied! Job: " +str(offerPage)
                             self.displayWriteResults(lineToWrite)
-
+                    if self.url != "":
+                        break
 
             prYellow("Category: " + urlWords[0] + "," +urlWords[1]+ " applied: " + str(countApplied) +
                   " jobs out of " + str(countJobs) + ".")
+
         
         utils.donate(self)
 
@@ -210,62 +225,58 @@ class Linkedin:
     def applyProcess(self, percentage, offerPage):
         # applyPages = math.floor(100 / percentage) - 2 
         applyPages = math.floor(100 / percentage) 
-        # /html/body/div[3]/div/div/div[2]/div/div[2]/form/div/div/div[2]/div/div/div[1]/div/input
         result = ""
-
-        while self.continueButton():
+        max_attempts = 10
+        i = 0
+        while self.continueButton() and i < max_attempts:
+            time.sleep(random.uniform(2, constants.botSpeed))
+            i = i + 1
             self.continueButton().click()
-            # asdf = self.driver.find_elements_by_tag_name("input")
-            # artdeco-modal-outlet
-            # dialog = self.driver.find_element(By.ID, "artdeco-modal-outlet")
-            # dialog = self.driver.find_element(By.CSS_SELECTOR, "div[aria-labelledby='jobs-apply-header']")
+
+            questions = self.driver.find_elements(By.CLASS_NAME, "jobs-easy-apply-form-section__grouping")
+            with open('data/questions.txt', 'w') as f:
+                for question in questions:
+                    f.write(question.get_attribute("innerText"))
+
             dialog = self.driver.find_element(By.CLASS_NAME, "jobs-easy-apply-content")
-            # print("id is " + dialog.get_attribute('id'))
-            # print("inner_HTML is " + dialog.get_attribute('innerHTML'))
             input_fields = dialog.find_elements(By.TAG_NAME, "input")
             radio_fields = []
             for input_field in input_fields:
                 if input_field.get_attribute("type") == "text":
-                    input_field.send_keys("1")   
+                    if "city" in input_field.get_attribute("id").lower():
+                        input_field.send_keys("Toronto")     
+                        time.sleep(random.uniform(1, constants.botSpeed))   
+                        input_field.send_keys(Keys.DOWN)        
+                        time.sleep(random.uniform(1, constants.botSpeed))       
+                        input_field.send_keys(Keys.ENTER) 
+                    else:
+                        # check if linkedin already autocompleted value
+                        if len(input_field.get_attribute("value")) == 0:
+                            input_field.send_keys("1")   
                 elif input_field.get_attribute("type") == "radio":
-                    if "Y" in input_field.get_attribute("value") or "y" in input_field.get_attribute("value"):
+                    if "y" in input_field.get_attribute("value").lower():
                         radio_fields.append(input_field)
+
             for radio_field in radio_fields:
                 ActionChains(self.driver).click(radio_field).perform()
-            # for input_field in input_fields:       
-            #     time.sleep(random.uniform(1, constants.botSpeed))
-            #     print("type of input is " + input_field.get_attribute("type"))
-            #     if input_field.get_attribute("type") == "text":
-            #         input_field.send_keys("1")   
-            #     elif input_field.get_attribute("type") == "radio":
-            #         print(input_field.get_attribute("value"))
-            #         if "Y" in input_field.get_attribute("value") or "y" in input_field.get_attribute("value"):
-            #             # input_field.click()
-            #             ActionChains(self.driver).click(input_field).perform()
-                        # self.driver.execute_script("arguments[0].checked = !arguments[0].checked;", input_field)
+
             select_fields = dialog.find_elements(By.TAG_NAME, "select")
             for select_field in select_fields:
                 Select(select_field).select_by_index(1)
-            # for input_field in input_fields:       
-            #     time.sleep(random.uniform(1, constants.botSpeed))
-            #     input_field.send_keys("1")   
-                                                                
-            # username_input_field = self.driver.find_element("id", "userNameInput")
-            # username_input_field.send_keys("lclyao@uwaterloo.ca")
-            
 
 
+
+        time.sleep(random.uniform(1+5, constants.botSpeed+5))
         self.driver.find_element( By.CSS_SELECTOR, "button[aria-label='Review your application']").click()
         time.sleep(random.uniform(1, constants.botSpeed))
-
-        if config.followCompanies is False:
+        if config.followCompanies:
             try:
                 self.driver.find_element(By.CSS_SELECTOR, "label[for='follow-company-checkbox']").click()
             except:
                 pass
 
+        time.sleep(10)
         self.driver.find_element(By.CSS_SELECTOR, "button[aria-label='Submit application']").click()
-        time.sleep(random.uniform(1, constants.botSpeed))
 
         result = "* 🥳 Just Applied to this job: " + str(offerPage)
 
@@ -278,7 +289,21 @@ class Linkedin:
         except Exception as e:
             prRed("❌ Error in DisplayWriteResults: " +str(e))
 
-start = time.time()
-Linkedin().linkJobApply()
-end = time.time()
-prYellow("---Took: " + str(round((time.time() - start)/60)) + " minute(s).")
+
+if __name__ == "__main__":
+    start = time.time()
+
+    parser = argparse.ArgumentParser(
+                                            prog='ProgramName',
+                                            description='What the program does',
+                                            epilog='Text at the bottom of help')
+
+    parser.add_argument('--email', '-e', dest='email', help='email of account', \
+             default="leoncyao@gmail.com")
+    parser.add_argument('--password', '-p', dest='password', help='password')
+    parser.add_argument('--jobID', '-j', dest='jobID', help='jobID', default=-1)
+
+    args = parser.parse_args()
+    Linkedin(email=args.email, password=args.password, jobID=args.jobID, headless=True).linkJobApply()
+    end = time.time()
+    prYellow("---Took: " + str(round((time.time() - start)/60)) + " minute(s).")
