@@ -18,8 +18,8 @@ class Linkedin:
     def __init__(self, email=config.email, password=config.password, jobID=-1, headless=True):
             prYellow("🌐 Bot will run in Chrome browser and log in Linkedin for you.")
             chrome_options = utils.chromeBrowserOptions()
-            if headless:
-                chrome_options.add_argument("--headless")
+            # if headless:
+            #     chrome_options.add_argument("--headless")
             self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=chrome_options)
             # self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=utils.chromeBrowserOptions())
             self.driver.get("https://www.linkedin.com/login?trk=guest_homepage-basic_nav-header-signin")
@@ -36,9 +36,10 @@ class Linkedin:
                 self.driver.find_element("id","password").send_keys(password)
                 time.sleep(2)
                 self.driver.find_element("xpath",'//button[@type="submit"]').click()
-                time.sleep(20)
+                time.sleep(10)
                 self.linkJobApply()
-            except:
+            except Exception as e:
+                prRed(e)
                 prRed("❌ Couldn't log in Linkedin by using Chrome. Please check your Linkedin credentials on config files line 7 and 8.")
     
     def generateUrls(self):
@@ -65,16 +66,16 @@ class Linkedin:
             self.driver.get(url)
             time.sleep(random.uniform(1, constants.botSpeed))
             # time.sleep(100)
-            totalJobs = self.driver.find_element(By.XPATH,'//small').text 
-            totalPages = utils.jobsToPages(totalJobs)
+            # totalJobs = self.driver.find_element(By.XPATH,'//small').text 
+            # totalPages = utils.jobsToPages(totalJobs)
 
             urlWords =  utils.urlToKeywords(url)
-            lineToWrite = "\n Category: " + urlWords[0] + ", Location: " +urlWords[1] + ", Applying " +str(totalJobs)+ " jobs."
-            self.displayWriteResults(lineToWrite)
+            # lineToWrite = "\n Category: " + urlWords[0] + ", Location: " +urlWords[1] + ", Applying " +str(totalJobs)+ " jobs."
+            # self.displayWriteResults(lineToWrite)
 
 
 
-            for page in range(totalPages):
+            for page in range(10):
                 currentPageJobs = constants.jobsPerPage * page
                 url = url +"&start="+ str(currentPageJobs)
                 self.driver.get(url)
@@ -304,6 +305,6 @@ if __name__ == "__main__":
     parser.add_argument('--jobID', '-j', dest='jobID', help='jobID', default=-1)
 
     args = parser.parse_args()
-    Linkedin(email=args.email, password=args.password, jobID=args.jobID, headless=True).linkJobApply()
+    Linkedin(email=args.email, jobID=args.jobID, headless=True).linkJobApply()
     end = time.time()
     prYellow("---Took: " + str(round((time.time() - start)/60)) + " minute(s).")
