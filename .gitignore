@@ -180,3 +180,5 @@ geckodriver.log
 angelco.py
 globalLogicCode.py
 linkedinProCode.py
+
+constants.py
