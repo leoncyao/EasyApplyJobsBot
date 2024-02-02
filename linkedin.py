@@ -18,8 +18,8 @@ class Linkedin:
     def __init__(self, email=config.email, password=config.password, jobID=-1, headless=True):
             prYellow("🌐 Bot will run in Chrome browser and log in Linkedin for you.")
             chrome_options = utils.chromeBrowserOptions()
-            # if headless:
-            #     chrome_options.add_argument("--headless")
+            if headless:
+                chrome_options.add_argument("--headless")
             self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=chrome_options)
             # self.driver = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()),options=utils.chromeBrowserOptions())
             self.driver.get("https://www.linkedin.com/login?trk=guest_homepage-basic_nav-header-signin")
@@ -304,7 +304,9 @@ if __name__ == "__main__":
     parser.add_argument('--password', '-p', dest='password', help='password')
     parser.add_argument('--jobID', '-j', dest='jobID', help='jobID', default=-1)
 
+    parser.add_argument('--with_head', '-w', dest='with_head', help='wheterh to run with head', action='store_true')
+
     args = parser.parse_args()
-    Linkedin(email=args.email, jobID=args.jobID, headless=True).linkJobApply()
+    Linkedin(email=args.email, jobID=args.jobID, headless=not args.with_head).linkJobApply()
     end = time.time()
     prYellow("---Took: " + str(round((time.time() - start)/60)) + " minute(s).")
