@@ -21,7 +21,7 @@ easyApplyEmail = "leoncyao@gmail.com"
 easyApplyKey = ""
 # location you want to search the jobs - ex : ["Poland", "Singapore", "New York City Metropolitan Area", "Monroe County"]
 # continent locations:["Europe", "Asia", "Australia", "NorthAmerica", "SouthAmerica", "Africa", "Australia"]
-location = ["Canada"]
+location = ["Toronto", "Vancouver" "New York City", "Hong Kong"]
 # keywords related with your job search
 keywords = ["data science", "software"]
 #job experience Level - ex:  ["Internship", "Entry level" , "Associate" , "Mid-Senior level" , "Director" , "Executive"]
