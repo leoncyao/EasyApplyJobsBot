@@ -36,7 +36,7 @@ class Linkedin:
                 self.driver.find_element("id","password").send_keys(password)
                 time.sleep(2)
                 self.driver.find_element("xpath",'//button[@type="submit"]').click()
-                time.sleep(10)
+                time.sleep(5)
                 self.linkJobApply()
             except Exception as e:
                 prRed(e)
@@ -106,35 +106,63 @@ class Linkedin:
                         easyApplybutton = self.easyApplyButton()
 
                         if easyApplybutton is not False:
+                            countApplied += 1
                             easyApplybutton.click()
                             time.sleep(random.uniform(1, constants.botSpeed))
-                            countApplied += 1
-                            try:
-                                self.chooseResume()
-                                self.driver.find_element(By.CSS_SELECTOR, "button[aria-label='Submit application']").click()
-                                time.sleep(random.uniform(1, constants.botSpeed))
-
-                                lineToWrite = jobProperties + " | " + "* 🥳 Just Applied to this job: "  +str(offerPage)
-                                self.displayWriteResults(lineToWrite)
-
-                            except:
+                            while True:
                                 try:
+                                    input()
+                                    self.chooseResume()
+                                    time.sleep(random.uniform(1, constants.botSpeed))
+                                    # comPercentage = self.driver.find_element(By.XPATH,'html/body/div[3]/div/div/div[2]/div/div/span').text
+                                    # percenNumber = int(comPercentage[0:comPercentage.index("%")])
+                                    self.applyProcess()
+                                    time.sleep(random.uniform(1, constants.botSpeed))
                                     self.driver.find_element(By.CSS_SELECTOR,"button[aria-label='Continue to next step']").click()
                                     time.sleep(random.uniform(1, constants.botSpeed))
-                                    self.chooseResume()
-                                    comPercentage = self.driver.find_element(By.XPATH,'html/body/div[3]/div/div/div[2]/div/div/span').text
-                                    percenNumber = int(comPercentage[0:comPercentage.index("%")])
-                                    result = self.applyProcess(percenNumber,offerPage)
-                                    lineToWrite = jobProperties + " | " + result
-                                    self.displayWriteResults(lineToWrite)
-                                
                                 except Exception as e: 
-                                    print(f"exception + {str(e)}")
-                                    self.chooseResume()
-                                    lineToWrite = jobProperties + " | " + "* 🥵 Cannot apply to this Job! " +str(offerPage)
-                                    self.displayWriteResults(lineToWrite)
-                                    g = open('data/url_fail_cases.txt', 'a')
-                                    g.write("\n" + str(offerPage) + '\n')
+                                    print(f"error: {e}")
+                                    break
+                            try:
+                                self.driver.find_element(By.CSS_SELECTOR, "button[aria-label='Submit application']").click()
+                            except:
+                                lineToWrite = jobProperties + " | " + "* 🥵 Cannot apply to this Job! " +str(offerPage)
+                                self.displayWriteResults(lineToWrite)
+                                g = open('data/url_fail_cases.txt', 'a')
+                                g.write("\n" + str(offerPage) + '\n')
+                            # except:
+                            #     try:
+                            #         self.driver.find_element(By.CSS_SELECTOR,"button[aria-label='Continue to next step']").click()
+                            #         time.sleep(random.uniform(1, constants.botSpeed))
+                            #         self.chooseResume()
+                            #         comPercentage = self.driver.find_element(By.XPATH,'html/body/div[3]/div/div/div[2]/div/div/span').text
+                            #         percenNumber = int(comPercentage[0:comPercentage.index("%")])
+                            #         result = self.applyProcess(percenNumber,offerPage)
+                            #         lineToWrite = jobProperties + " | " + result
+                            #         self.displayWriteResults(lineToWrite)
+                            #     except Exception as e: 
+                            #         print(f"exception + {str(e)}")
+                            #         self.chooseResume()
+                            #         lineToWrite = jobProperties + " | " + "* 🥵 Cannot apply to this Job! " +str(offerPage)
+                            #         self.displayWriteResults(lineToWrite)
+                            #         g = open('data/url_fail_cases.txt', 'a')
+                            #         g.write("\n" + str(offerPage) + '\n')
+                            #     try:
+                            #         self.driver.find_element(By.CSS_SELECTOR,"button[aria-label='Continue to next step']").click()
+                            #         time.sleep(random.uniform(1, constants.botSpeed))
+                            #         self.chooseResume()
+                            #         comPercentage = self.driver.find_element(By.XPATH,'html/body/div[3]/div/div/div[2]/div/div/span').text
+                            #         percenNumber = int(comPercentage[0:comPercentage.index("%")])
+                            #         result = self.applyProcess(percenNumber,offerPage)
+                            #         lineToWrite = jobProperties + " | " + result
+                            #         self.displayWriteResults(lineToWrite)
+                            #     except Exception as e: 
+                            #         print(f"exception + {str(e)}")
+                            #         self.chooseResume()
+                            #         lineToWrite = jobProperties + " | " + "* 🥵 Cannot apply to this Job! " +str(offerPage)
+                            #         self.displayWriteResults(lineToWrite)
+                            #         g = open('data/url_fail_cases.txt', 'a')
+                            #         g.write("\n" + str(offerPage) + '\n')
                         else:
                             lineToWrite = jobProperties + " | " + "* 🥳 Already applied! Job: " +str(offerPage)
                             self.displayWriteResults(lineToWrite)
@@ -223,10 +251,10 @@ class Linkedin:
             EasyApplyButton = False
 
         return EasyApplyButton
-    def applyProcess(self, percentage, offerPage):
+    def applyProcess(self):
         # applyPages = math.floor(100 / percentage) - 2 
-        applyPages = math.floor(100 / percentage) 
-        result = ""
+        # applyPages = math.floor(100 / percentage) 
+        # result = ""
         max_attempts = 10
         i = 0
         while self.continueButton() and i < max_attempts:
@@ -307,6 +335,6 @@ if __name__ == "__main__":
     parser.add_argument('--with_head', '-w', dest='with_head', help='wheterh to run with head', action='store_true')
 
     args = parser.parse_args()
-    Linkedin(email=args.email, jobID=args.jobID, headless=not args.with_head).linkJobApply()
+    Linkedin(email=args.email, password=args.password, jobID=args.jobID, headless=not args.with_head).linkJobApply()
     end = time.time()
     prYellow("---Took: " + str(round((time.time() - start)/60)) + " minute(s).")
