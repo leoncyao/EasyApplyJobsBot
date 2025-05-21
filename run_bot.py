@@ -1,69 +1,93 @@
 import argparse
 import time
-from browser_manager import BrowserManager
-from url_scraper import LinkedInUrlScraper
-from batch_applier import BatchJobApplier
-from utils import prRed, prYellow, prGreen
+from login import connect_to_chrome, login_to_linkedin
+from pychrome_batch_applier import BatchJobApplier
+from pychrome_scraper import PyChromeLinkedInScraper
 import config
-class LinkedInBot:
-    def __init__(self, email, password, headless=True, max_applications=None, delay=60, skip_scraping=False):
-        self.email = email
-        self.password = password
-        self.headless = headless
-        self.max_applications = max_applications
-        self.delay = delay
-        self.skip_scraping = skip_scraping
-        self.browser = None
 
-    def run(self):
-        """Run the complete LinkedIn bot process"""
-        try:
-            # Initialize browser
-            prYellow("\n=== Initializing Browser ===")
-            self.browser = BrowserManager(self.email, self.password, self.headless)
-            self.driver = self.browser.get_driver()
+def run_bot(email, password, verbose=False, skip_login=False, skip_scraping=False, retry_failed=False):
+    """Run the complete LinkedIn bot process using Chrome DevTools Protocol"""
+    print("\n=== Bot Configuration ===")
+    print(f"Email: {email}")
+    print(f"Skip Login: {skip_login}")
+    print(f"Skip Scraping: {skip_scraping}")
+    print(f"Retry Failed: {retry_failed}")
+    print(f"Verbose: {verbose}")
+    print("=======================\n")
 
-            # Scrape URLs if not skipped
-            if not self.skip_scraping:
-                prYellow("\n=== Scraping Job URLs ===")
-                scraper = LinkedInUrlScraper(self.driver) # Use the same browser instance
-                scraper.scrape_job_urls()
-            else:
-                prYellow("Skipping URL scraping as requested")
+    browser = None
+    tab = None
+    
+    try:
+        # Connect to Chrome and login
+        print("\n=== Connecting to Chrome and Logging in ===")
+        browser, tab = connect_to_chrome(verbose=verbose)
+        if not browser or not tab:
+            print("Error: Failed to connect to Chrome")
+            return False
+            
+        if not skip_login:
+            if not login_to_linkedin(tab, email, password, verbose):
+                print("Error: Failed to login to LinkedIn")
+                return False
+        else:
+            print("Skipping LinkedIn login as requested")
 
-            # Apply to jobs
-            prYellow("\n=== Starting Batch Application Process ===")
-            batch_applier = BatchJobApplier(
-                driver=self.driver,
-                max_applications=self.max_applications,
-                delay_between_applications=self.delay
-            )
-            batch_applier.process_jobs()
+        # Scrape URLs if not skipped
+        if not skip_scraping:
+            print("\n=== Scraping Job URLs ===")
+            scraper = PyChromeLinkedInScraper(browser, tab)
+            scraper.scrape_job_urls()
+        else:
+            print("Skipping URL scraping as requested")
 
-        except Exception as e:
-            prRed(f"❌ Error in bot execution: {str(e)}")
-        finally:
-            if self.browser:
-                self.browser.close()
+        # Apply to jobs
+        print("\n=== Starting Batch Application Process ===")
+        batch_applier = BatchJobApplier(
+            browser=browser,
+            tab=tab,
+            retry_failed=retry_failed,
+            verbose=verbose,
+        )
+        batch_applier.process_jobs()
+
+        return True
+
+    except Exception as e:
+        print(f"Error in bot execution: {str(e)}")
+        return False
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='LinkedIn Job Application Bot')
-    parser.add_argument('--email', default=config.email, help='LinkedIn email')
-    parser.add_argument('--password', default=config.password, help='LinkedIn password')
-    parser.add_argument('--headless', action='store_true', help='Run in headless mode')
-    parser.add_argument('--max', type=int, help='Maximum number of applications to submit')
-    parser.add_argument('--delay', type=int, default=60, help='Delay between applications in seconds')
+    parser.add_argument('--email', default=config.email, help='LinkedIn email (defaults to config.py)')
+    parser.add_argument('--password', default=config.password, help='LinkedIn password (defaults to config.py)')
     parser.add_argument('--skip-scraping', action='store_true', help='Skip URL scraping and use existing job_urls.json')
+    parser.add_argument('--retry-failed', action='store_true', help='Retry failed applications')
+    parser.add_argument('--skip-login', action='store_true', help='Skip LinkedIn login (useful if already logged in)')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
     
     args = parser.parse_args()
     
-    bot = LinkedInBot(
-        email=args.email,
-        password=args.password,
-        headless=args.headless,
-        max_applications=args.max,
-        delay=args.delay,
-        skip_scraping=args.skip_scraping
-    )
+    # Get credentials from config.py if not provided via command line
+    email = args.email or config.email
+    password = args.password or config.password
+
+    # print(args.skip_login)
+    # print(args.verbose)
+    # time.sleep(1000)
     
-    bot.run() 
+    if not args.skip_login and (not email or not password):
+        print("Error: LinkedIn credentials not found. Please provide them via command line arguments or in config.py")
+        exit(1)
+    
+
+    success = run_bot(
+        email=email,
+        password=password,
+        skip_login=args.skip_login,
+        skip_scraping=args.skip_scraping,
+        retry_failed=args.retry_failed,
+        verbose=args.verbose,
+    )
+
+    exit(0 if success else 1) 
