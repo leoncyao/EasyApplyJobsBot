@@ -1,83 +1,66 @@
 import time, random, os, json
 import utils, constants, config
 import pychrome
-from utils import prRed, prYellow, prGreen
 
+from utils import _print
 
 console_logs = []
 
 class PyChromeJobApplier:
-    def __init__(self, debugging_url="http://127.0.0.1:9222"):
-        """Initialize the applier with Chrome DevTools debugging URL"""
-        self.debugging_url = debugging_url
-        self.browser = None
-        self.tab = None
+    def __init__(self, browser, tab, verbose=False):
+        self.browser = browser
+        self.tab = tab
+        self.verbose = verbose
+        _print(f"verbose: {verbose}", level="debug", verbose=verbose)
 
-    def connect(self):
-        """Connect to Chrome and set up the tab"""
-        try:
-            self.browser = pychrome.Browser(url=self.debugging_url)
-            tabs = self.browser.list_tab()
-            if not tabs:
-                raise Exception("No tabs found in the browser")
-            
-            self.tab = tabs[0]
-
-
-            self.tab.start()
-            self.tab.Log.enable()
-            # Enable necessary domains
-            self.tab.Network.enable()
-            self.tab.Page.enable()
-            self.tab.Runtime.enable()
-            self.tab.DOM.enable()
-            self.tab.Console.enable()  # Enable Console domain
-            
-
-            # def handle_console(event):
-            #     for arg in event.get("args", []):
-            #         value = arg.get("value")
-            #         if value:
-            #             global console_logs
-            #             console_logs.append(value)
-
-            # # Add event listener for console output
-            # self.tab.Runtime.consoleAPICalled = handle_console
-
-
-            prGreen("✅ Successfully connected to Chrome")
-            return True
-        except Exception as e:
-            prRed(f"❌ Failed to connect to Chrome: {str(e)}")
-            return False
+    def _set_language_to_english(self):
+        """Set LinkedIn language to English"""
+        self.tab.Page.navigate(url="https://www.linkedin.com/mypreferences/d/settings/language")
+        time.sleep(1)
+        
+        script = """
+        Array.from(document.querySelectorAll('select')).map(select => {
+            select.selectedIndex = 6;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            return true;
+        });
+        """
+        _print("🔍 Changing language to English", level="info", verbose=self.verbose)
+        time.sleep(2)
+        result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
+        time.sleep(2)
+        return result
 
     def apply_to_job(self, job_url):
         """Main method to apply to a specific job"""
-        if not self.connect():
-            return False
-
+        time.sleep(1)
+        _print(f"🔍 Applying to job: {job_url}", level="info", verbose=self.verbose)
+        
         try:
+            # self._set_language_to_english()
+            # self._check_for_bengali_home()
+            
             # Navigate to the job page
             self.tab.Page.navigate(url=job_url)
-            time.sleep(3)  # Wait for page load
+            time.sleep(1)  # Wait for page load
 
             # Check for Easy Apply button
             easy_apply_button = self._find_easy_apply_button()
             if not easy_apply_button:
-                prYellow(f"🥳 Already applied! Job: {job_url}")
+                _print(f"🥳 Already applied! Job: {job_url}", level="info", verbose=self.verbose)
                 return True
 
             time.sleep(1)
 
             if self._complete_application_process():
-                prGreen(f"✅ Successfully applied to: {job_url}")
+                _print(f"✅ Successfully applied to: {job_url}", level="success", verbose=self.verbose)
                 return True
             else:
-                prRed(f"❌ Failed to apply to: {job_url}")
+                _print(f"❌ Failed to apply to: {job_url}", level="error", verbose=self.verbose)
                 return False
 
         except Exception as e:
-            prRed(f"Error during application process: {str(e)}")
+            _print(f"Error during application process: {str(e)}", level="error", verbose=self.verbose)
             return False
 
     def _find_easy_apply_button(self):
@@ -85,7 +68,7 @@ class PyChromeJobApplier:
         script = """
         (function() {
             const button = document.querySelector('div.jobs-apply-button--top-card button.jobs-apply-button');
-            if (button) {
+            if (button && button.textContent.toLowerCase().includes('easy')) {
                 button.click();
                 return true;
             }
@@ -95,6 +78,72 @@ class PyChromeJobApplier:
         result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
         return result.get('result', {}).get('value', False)
 
+    def _check_for_bengali_home(self):
+        """Check if the page contains Bengali 'হোম' text in navigation elements"""
+        time.sleep(1)
+        script = """
+        (function() {
+            const targetText = "হোম";
+            console.log("Looking for text:", targetText);
+            
+            const elements = document.querySelectorAll('span.t-12.global-nav__primary-link-text');
+            console.log("Found elements:", elements.length);
+            
+            const bengaliElements = [];
+            
+            elements.forEach((element, index) => {
+                const title = element.getAttribute('title') || '';
+                const text = element.textContent.trim();
+                
+                console.log(`Element ${index}:`, {
+                    title: title,
+                    text: text,
+                    innerHTML: element.innerHTML
+                });
+                
+                if (title === targetText || text === targetText) {
+                    console.log("Match found!");
+                    bengaliElements.push({
+                        title: title,
+                        text: text,
+                        innerHTML: element.innerHTML
+                    });
+                }
+            });
+            
+            console.log("Total matches:", bengaliElements.length);
+            
+            if (bengaliElements.length > 0) {
+                return {
+                    found: true,
+                    elements: bengaliElements
+                };
+            }
+            return {
+                found: false,
+                elements: []
+            };
+        })()
+        """
+        result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
+
+        time.sleep(1)
+        result_value = result.get('result', {}).get('value', {})
+        
+        if result_value.get('found', False):
+            elements = result_value.get('elements', [])
+            for element in elements:
+                _print(f"🚨 Found 'হোম' in element:", level="warning", verbose=self.verbose)
+                _print(f"  Text Content: '{element['text']}'", level="debug", verbose=self.verbose)
+                _print(f"  Title: '{element['title']}'", level="debug", verbose=self.verbose)
+                _print(f"  Inner HTML: '{element['innerHTML']}'", level="debug", verbose=self.verbose)
+            self._set_language_to_english()
+
+            return False
+        else:
+            _print("✅ No 'হোম' text found in navigation elements.", level="success", verbose=self.verbose)
+            return True
+
     def _complete_application_process(self):
         """Complete the multi-step application process"""
         max_attempts = 10
@@ -102,52 +151,48 @@ class PyChromeJobApplier:
 
         while attempt < max_attempts:
             try:
+                # if not self._check_for_bengali_home():
+                #     return False
+                
+                time.sleep(1)
                 self._handle_application_form()
                 time.sleep(random.uniform(0.1, constants.botSpeed))
                 
                 if not self._find_continue_button():
-                    prRed("❌ No continue button")
+                    _print("❌ No continue button", level="error", verbose=self.verbose)
                     if not self._find_review_button():
-                        prRed("❌ No review button")
+                        _print("❌ No review button", level="error", verbose=self.verbose)
                         if not self._find_submit_button():
-                            prRed("❌ No submit button")
+                            _print("❌ No submit button", level="error", verbose=self.verbose)
+                        else:
+                            return True
                 attempt += 1
             except Exception as e:
-                prRed(f"Error in application step: {str(e)}")
-                break
-
-        try:
-            submit_btn = self._find_submit_button()
-            if submit_btn:
-                time.sleep(random.uniform(0.1, constants.botSpeed))
-                self._click_element(submit_btn)
-                return True
-        except:
-            pass
-        return False
+                _print(f"Error in application step: {str(e)}", level="error", verbose=self.verbose)
+                return False
 
     def _handle_application_form(self):
         """Handle the job application form"""
         time.sleep(random.uniform(0.1, constants.botSpeed * 2))
         
         # Handle other text inputs
-        self._handle_text_inputs()
-        
+        self._handle_text_inputs_with_question_logging()
+        time.sleep(1)
         self._handle_toronto_location()
+        time.sleep(1)
         # Handle radio buttons and checkboxes
         self.handle_fieldset()
-        
+        time.sleep(1)
         # Handle select fields
         self._handle_select_fields()
-        
+        time.sleep(1)
         # Handle textareas
         self._handle_textareas()
 
     def handle_fieldset(self):
         """Handle radio inputs within fieldsets by selecting the first option"""
         
-        
-        
+    
         script = """
         (function() {
             function handleFieldset(fieldset) {
@@ -223,32 +268,31 @@ class PyChromeJobApplier:
         result_value = result.get('result', {}).get('value', {})
         
         if not result_value.get('success', False):
-            prRed(f"❌ Error handling fieldsets: {result_value.get('error', 'Unknown error')}")
+            _print(f"❌ Error handling fieldsets: {result_value.get('error', 'Unknown error')}", level="error", verbose=self.verbose)
             return False
             
         results = result_value.get('results', [])
-        prGreen(f"✅ Processed {len(results)} fieldsets")
+        
+        _print(f"✅ Processed {len(results)} fieldsets", level="success", verbose=self.verbose)
         
         return True
 
-    def _handle_text_inputs(self):
-        """Handle text input fields"""
+    def _handle_text_inputs_with_question_logging(self):
+        """Handle text input fields with question logging"""
+        # Read responses from JSON file
+        try:
+            with open('data/answers.json', 'r', encoding='utf-8') as f:
+                input_responses = json.load(f)
+        except FileNotFoundError:
+            _print("❌ data/answers.json not found", level="error", verbose=self.verbose)
+            return False
+        except json.JSONDecodeError:
+            _print("❌ Invalid data/answers.json", level="error", verbose=self.verbose)
+            return False
+
         script = """
         (function() {
-            const input_responses = {
-                'linkedin': 'https://www.linkedin.com/in/leon-yao/',
-                'github': 'https://github.com/leon-yao',
-                'website': 'https://leoncyao.github.io/blog/',
-                'phone': '6479550188',
-                'email': 'leoncyao@gmail.com',
-                'current,company': 'Instacart',
-                'notice,period': '2 weeks',
-                'salary': '100000',
-                'hear': 'LinkedIn',
-                'first': 'Leon',
-                'last': 'Yao',
-                'name': 'Leon Yao'
-            };
+            const input_responses = %s;
 
             function sleep(ms) {
                 const start = Date.now();
@@ -313,7 +357,6 @@ class PyChromeJobApplier:
 
                 // Check each response pattern
                 for (const [keywords, value] of Object.entries(input_responses)) {
-                
                     const keywordList = keywords.split(',');
                     
                     // Check if any of the keywords match any of the input's properties
@@ -359,15 +402,36 @@ class PyChromeJobApplier:
             console.log(`Found ${inputs.length} text input fields`);
 
             const results = inputs.map(input => {
-            
                 sleep(1000);
                 const success = fillInput(input);
+                
+                // Get parent text using XPath
+                let parentText = '';
+                try {
+                    const parentXPath = `//input[@id='${input.id}']/..`;
+                    const parentElement = document.evaluate(
+                        parentXPath,
+                        document,
+                        null,
+                        XPathResult.FIRST_ORDERED_NODE_TYPE,
+                        null
+                    ).singleNodeValue;
+                    
+                    if (parentElement) {
+                        parentText = parentElement.textContent.trim();
+                    }
+                } catch (e) {
+                    console.error('Error getting parent text:', e);
+                }
+
                 return {
                     id: input.id,
                     name: input.name,
                     placeholder: input.placeholder,
                     value: input.value,
-                    success
+                    success,
+                    question: input.parentElement ? input.parentElement.textContent.trim() : '',
+                    parentText: parentText
                 };
             });
 
@@ -376,32 +440,92 @@ class PyChromeJobApplier:
                 results
             };
         })()
-        """
+        """ % json.dumps(input_responses)
         
         result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
         result_value = result.get('result', {}).get('value', {})
         
-
-
         if not result_value.get('success', False):
-            prRed(f"❌ Error handling text inputs: {result_value.get('error', 'Unknown error')}")
+            _print(f"❌ Error handling text inputs: {result_value.get('error', 'Unknown error')}", level="error", verbose=self.verbose)
             return False
             
         results = result_value.get('results', [])
-        prGreen(f"✅ Processed {len(results)} text input fields")
+        _print(f"✅ Processed {len(results)} text input fields", level="success", verbose=self.verbose)
+        
+        # Log new questions
+        try:
+            # Read existing questions
+            if os.path.exists('data/questions.json'):
+                with open('data/questions.json', 'r', encoding='utf-8') as f:
+                    existing_texts = json.load(f)
+            else:
+                existing_texts = []
+            
+            # Get new parent texts from results
+            new_texts = []
+            for result in results:
+                if result.get('parentText') and result['parentText'] not in existing_texts:
+                    new_texts.append(result['parentText'])
+            
+            # Add new texts to existing ones
+            if new_texts:
+                existing_texts.extend(new_texts)
+                # Save updated texts
+                with open('data/questions.json', 'w', encoding='utf-8') as f:
+                    json.dump(existing_texts, f, indent=2, ensure_ascii=False)
+                _print(f"📝 Added {len(new_texts)} new parent texts to questions.json", level="info", verbose=self.verbose)
+        
+        except Exception as e:
+            _print(f"❌ Error logging parent texts: {str(e)}", level="error", verbose=self.verbose)
         
         return True
+
 
     def _handle_select_fields(self):
         """Handle select/dropdown fields"""
         script = """
-        Array.from(document.querySelectorAll('select')).map(select => {
-            select.selectedIndex = 1;
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-            return true;
-        });
+        (function() {
+            const dialog = document.querySelector("[data-test-modal-id='easy-apply-modal']");
+            if (!dialog) {
+                return { success: false, message: "No dialog found" };
+            }
+            
+            const selects = dialog.querySelectorAll('select');
+            const results = [];
+            
+            selects.forEach(select => {
+                const label = select.previousElementSibling?.textContent?.trim() || 'No label';
+                results.push({ label });
+                
+                if (select.options.length > 1) {
+                    select.selectedIndex = 1;
+                    select.dispatchEvent(new Event('change', { bubbles: true }));
+                }
+            });
+            
+            return { 
+                success: true, 
+                fields: results 
+            };
+        })()
         """
-        self.tab.Runtime.evaluate(expression=script)
+        try:
+            result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
+            result_value = result.get('result', {}).get('value', {})
+            
+            if result_value.get('success', False):
+                fields = result_value.get('fields', [])
+                _print(f"Found {len(fields)} select fields:", level="info", verbose=self.verbose)
+                for field in fields:
+                    _print(f"  • {field['label']}", level="info", verbose=self.verbose)
+                return True
+            else:
+                _print("ℹ️ No select fields found in this application", level="info", verbose=self.verbose)
+                return False
+                
+        except Exception as e:
+            _print(f"❌ Error handling select fields: {str(e)}", level="error", verbose=self.verbose)
+            return False
 
     def _handle_textareas(self):
         """Handle textarea fields"""
@@ -493,11 +617,11 @@ class PyChromeJobApplier:
         result_value = result.get('result', {}).get('value', {})
         
         if not result_value.get('success', False):
-            prRed(f"❌ Error handling textareas: {result_value.get('error', 'Unknown error')}")
+            _print(f"❌ Error handling textareas: {result_value.get('error', 'Unknown error')}", level="error", verbose=self.verbose)
             return False
             
         results = result_value.get('results', [])
-        prGreen(f"✅ Processed {len(results)} textarea fields")
+        _print(f"✅ Processed {len(results)} textarea fields", level="success", verbose=self.verbose)
         
         return True
 
@@ -564,7 +688,7 @@ class PyChromeJobApplier:
                     json.dump(questions, f, indent=2, ensure_ascii=False)
                 prYellow(f"📝 Logged new question: {question_text}")
         except Exception as e:
-            prRed(f"❌ Error logging question: {str(e)}")
+            _print(f"❌ Error logging question: {str(e)}", level="error", verbose=self.verbose)
 
     def _handle_toronto_location(self):
         """Handle the Toronto location input specifically"""
@@ -577,7 +701,7 @@ class PyChromeJobApplier:
                 return { success: false, error: 'No dialog found' };
             }
 
-            const locationInput = dialog.querySelector('input[id*="location-GEO-LOCATION"]');
+            const locationInput = dialog.querySelector('input[id*="location"], input[id*="city"]');
             if (!locationInput) {
                 console.log('No location input found');
                 return { success: false, error: 'No location input found' };
@@ -604,7 +728,7 @@ class PyChromeJobApplier:
         result_value = result.get('result', {}).get('value', {})
         
         if not result_value.get('success', False):
-            prRed(f"❌ Error inserting Toronto: {result_value.get('error', 'Unknown error')}")
+            _print("ℹ️ No city or location field found in this application", level="info", verbose=self.verbose)
             return False
             
         # Wait for suggestions
@@ -614,7 +738,7 @@ class PyChromeJobApplier:
         down_script = """
         (function() {
             const dialog = document.querySelector("[data-test-modal-id='easy-apply-modal']");
-            const locationInput = dialog.querySelector('input[id*="location-GEO-LOCATION"]');
+            const locationInput = dialog.querySelector('input[id*="location"], input[id*="city"]');
             
             console.log('Pressing down arrow...');
             locationInput.dispatchEvent(new KeyboardEvent('keydown', {
@@ -631,7 +755,7 @@ class PyChromeJobApplier:
         
         result = self.tab.Runtime.evaluate(expression=down_script, returnByValue=True)
         if not result.get('result', {}).get('value', {}).get('success', False):
-            prRed("❌ Error pressing down arrow")
+            _print("❌ Error pressing down arrow", level="error", verbose=self.verbose)
             return False
             
         # Wait a bit
@@ -641,7 +765,7 @@ class PyChromeJobApplier:
         enter_script = """
         (function() {
             const dialog = document.querySelector("[data-test-modal-id='easy-apply-modal']");
-            const locationInput = dialog.querySelector('input[id*="location-GEO-LOCATION"]');
+            const locationInput = dialog.querySelector('input[id*="location"], input[id*="city"]');
             
             console.log('Pressing enter...');
             locationInput.dispatchEvent(new KeyboardEvent('keydown', {
@@ -666,24 +790,48 @@ class PyChromeJobApplier:
         result_value = result.get('result', {}).get('value', {})
         
         if not result_value.get('success', False):
-            prRed("❌ Error pressing enter")
+            _print("❌ Error pressing enter", level="error", verbose=self.verbose)
             return False
             
-        prGreen(f"✅ Set location to: {result_value.get('value', '')}")
+        _print(f"✅ Set location to: {result_value.get('value', '')}", level="success", verbose=self.verbose)
         return True
 
 if __name__ == "__main__":
     import argparse
+    from login import connect_to_chrome, login_to_linkedin
+    import config
     
     parser = argparse.ArgumentParser(description='Apply to a specific LinkedIn job using PyChrome')
     parser.add_argument('--url', required=True, help='LinkedIn job URL to apply to')
-    parser.add_argument('--debug-url', default="http://localhost:9222", 
-                      help='Chrome DevTools debugging URL (default: http://localhost:9222)')
+    parser.add_argument('--email', default=config.email, help='LinkedIn email (defaults to config.py)')
+    parser.add_argument('--password', default=config.password, help='LinkedIn password (defaults to config.py)')
+    parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
     
     args = parser.parse_args()
     
-    applier = PyChromeJobApplier(debugging_url=args.debug_url)
+    # Get credentials from config.py if not provided via command line
+    email = args.email or config.email
+    password = args.password or config.password
+    
+    if not email or not password:
+        print("Error: LinkedIn credentials not found. Please provide them via command line arguments or in config.py")
+        exit(1)
+    
     try:
+        # First connect to Chrome and login
+        browser, tab = connect_to_chrome(verbose=args.verbose)
+        if not browser or not tab:
+            print("Error: Failed to connect to Chrome")
+            exit(1)
+            
+        if not login_to_linkedin(tab, email, password, args.verbose):
+            print("Error: Failed to login to LinkedIn")
+            exit(1)
+            
+        # Initialize applier with browser and tab
+        applier = PyChromeJobApplier(browser=browser, tab=tab)
         applier.apply_to_job(args.url)
+        
     except Exception as e:
-        print(f"error {e}")
+        print(f"Error: {e}")
+        exit(1)

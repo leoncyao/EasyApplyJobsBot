@@ -17,23 +17,36 @@ def chromeBrowserOptions():
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_experimental_option('useAutomationExtension', False)
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    if(len(config.chromeProfilePath)>0):
-        initialPath = config.chromeProfilePath[0:config.chromeProfilePath.rfind("/")]
-        profileDir = config.chromeProfilePath[config.chromeProfilePath.rfind("/")+1:]
-        options.add_argument('--user-data-dir=' +initialPath)
-        options.add_argument("--profile-directory=" +profileDir)
-    else:
-        options.add_argument("--incognito")
+    # if(len(config.chromeProfilePath)>0):
+    #     initialPath = config.chromeProfilePath[0:config.chromeProfilePath.rfind("/")]
+    #     profileDir = config.chromeProfilePath[config.chromeProfilePath.rfind("/")+1:]
+    #     options.add_argument('--user-data-dir=' +initialPath)
+    #     options.add_argument("--profile-directory=" +profileDir)
+    # else:
+    #     options.add_argument("--incognito")
     return options
 
-def prRed(prt):
-    print(f"\033[91m{prt}\033[00m")
+def _print(message, level="info", verbose=False):
+    """Print message with appropriate log level and emoji prefix
+    
+    Args:
+        message (str): Message to print
+        level (str): Log level - one of "info", "debug", "success", "warning", "error"
+        verbose (bool): Whether to print the message
+    """
+    if not verbose:
+        return
 
-def prGreen(prt):
-    print(f"\033[92m{prt}\033[00m")
-
-def prYellow(prt):
-    print(f"\033[93m{prt}\033[00m")
+    # Only print if level exists in allowed_log_levels
+    if level in config.allowed_log_levels:
+        prefix = {
+            "info": "ℹ️",
+            "debug": "🔍",
+            "success": "✅",
+            "warning": "⚠️",
+            "error": "❌"
+        }.get(level, "ℹ️")
+        print(f"{prefix} {message}")
 
 def getUrlDataFile():
     urlData = ""

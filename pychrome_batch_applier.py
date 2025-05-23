@@ -4,7 +4,6 @@ import argparse
 import os
 import random
 from pychrome_applier import PyChromeJobApplier
-from utils import prRed, prYellow, prGreen
 import config
 from login import connect_to_chrome, login_to_linkedin
 
@@ -26,10 +25,10 @@ class BatchJobApplier:
             with open(json_file, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except FileNotFoundError:
-            prRed(f"❌ Job URLs file not found: {json_file}")
+            _print(f"❌ Job URLs file not found: {json_file}", level="error", verbose=self.verbose)
             return {}
         except json.JSONDecodeError:
-            prRed(f"❌ Invalid JSON file: {json_file}")
+            _print(f"❌ Invalid JSON file: {json_file}", level="error", verbose=self.verbose)
             return {}
 
     def process_jobs(self):
@@ -40,10 +39,10 @@ class BatchJobApplier:
         # Load job data from JSON file
         job_data = self.load_job_urls()
         if not job_data:
-            prRed("❌ No jobs to process")
+            _print("❌ No jobs to process", level="error", verbose=self.verbose)
             return
 
-        prYellow(f"📋 Found {len(job_data)} jobs to process")
+        _print(f"📋 Found {len(job_data)} jobs to process", level="info", verbose=self.verbose)
 
         # Initialize or load failed applications file
         failed_apps_file = 'data/failed_applications.json'
@@ -62,10 +61,16 @@ class BatchJobApplier:
             results = []
 
         # Initialize JobApplier
-        self.applier = PyChromeJobApplier(self.browser, self.tab)
+        self.applier = PyChromeJobApplier(self.browser, self.tab, self.verbose)
+        successful_applications = 0
 
         for job_id, job in job_data.items():
             try:
+                # Check if we've reached 50 successful applications
+                if successful_applications >= 50:
+                    _print(f"✅ Reached target of 50 successful applications", level="success", verbose=self.verbose)
+                    break
+
                 _print(f"\n🔄 Processing job: {job['url']}", level="info", verbose=self.verbose)
                 
                 # Check job status
@@ -75,7 +80,6 @@ class BatchJobApplier:
                 elif job.get('status') == 'failed' and not self.retry_failed:
                     _print(f"⚠️ Skipping previously failed job: {job['url']}", level="info", verbose=self.verbose)
                     continue
-                print(job['url'])
                 success = self.applier.apply_to_job(job['url'])
                 
                 # Update job status in job_data.json
@@ -98,18 +102,21 @@ class BatchJobApplier:
                 with open(results_file, 'w', encoding='utf-8') as f:
                     json.dump(results, f, indent=2, ensure_ascii=False)
                 
-                if not success:
+                if success:
+                    successful_applications += 1
+                    _print(f"✅ Successful applications so far: {successful_applications}/50", level="success", verbose=self.verbose)
+                else:
                     # Add to failed applications if not already there
                     if job_id not in failed_apps:
                         failed_apps[job_id] = job_data[job_id]
                         with open(failed_apps_file, 'w', encoding='utf-8') as f:
                             json.dump(failed_apps, f, indent=2, ensure_ascii=False)
-                        prRed(f"❌ Added to failed applications: {job['url']}")
+                        _print(f"❌ Added to failed applications: {job['url']}", level="error", verbose=self.verbose)
                 
                 time.sleep(random.uniform(1, 3))  # Random delay between jobs
                 
             except Exception as e:
-                prRed(f"❌ Error processing job {job['url']}: {str(e)}")
+                _print(f"❌ Error processing job {job['url']}: {str(e)}", level="error", verbose=self.verbose)
                 # Add to failed applications
                 if job_id not in failed_apps:
                     failed_apps[job_id] = job_data[job_id]
@@ -120,18 +127,18 @@ class BatchJobApplier:
     def _print_progress(self):
         """Print current progress"""
         total = self.applied_count + self.failed_count + self.skipped_count
-        prYellow(f"\nProgress: {total} jobs processed")
-        prGreen(f"✅ Applied: {self.applied_count}")
-        prRed(f"❌ Failed: {self.failed_count}")
-        prYellow(f"⚠️ Skipped: {self.skipped_count}")
+        _print(f"\nProgress: {total} jobs processed", level="info", verbose=self.verbose)
+        _print(f"✅ Applied: {self.applied_count}", level="success", verbose=self.verbose)
+        _print(f"❌ Failed: {self.failed_count}", level="error", verbose=self.verbose)
+        _print(f"⚠️ Skipped: {self.skipped_count}", level="info", verbose=self.verbose)
 
     def _print_final_summary(self):
         """Print final summary"""
-        prYellow("\n=== Final Summary ===")
-        prGreen(f"✅ Successfully applied: {self.applied_count}")
-        prRed(f"❌ Failed applications: {self.failed_count}")
-        prYellow(f"⚠️ Skipped jobs: {self.skipped_count}")
-        prYellow(f"Total jobs processed: {self.applied_count + self.failed_count + self.skipped_count}")
+        _print("\n=== Final Summary ===", level="info", verbose=self.verbose)
+        _print(f"✅ Successfully applied: {self.applied_count}", level="success", verbose=self.verbose)
+        _print(f"❌ Failed applications: {self.failed_count}", level="error", verbose=self.verbose)
+        _print(f"⚠️ Skipped jobs: {self.skipped_count}", level="info", verbose=self.verbose)
+        _print(f"Total jobs processed: {self.applied_count + self.failed_count + self.skipped_count}", level="info", verbose=self.verbose)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Batch apply to LinkedIn jobs from JSON file')

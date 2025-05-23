@@ -5,7 +5,9 @@ __pycache__/
 
 # C extensions
 *.so
-
+config.py
+/Old
+/data
 .vscode/
 EasyApplyJobsBot/
 

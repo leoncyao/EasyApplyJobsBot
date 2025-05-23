@@ -1,11 +1,26 @@
+# Logging configuration
+# Available log levels (in order of priority):
+# - error: Only show error messages
+# - warning: Show errors and warnings
+# - success: Show errors, warnings, and success messages
+# - info: Show errors, warnings, success, and info messages
+# - debug: Show all messages including debug information
+allowed_log_levels = ["error", "warning", "success", "info", "debug"]
+log_level = "error"  # Default to showing info level and above
+
 # General bot settings to use Pro settings you need to download Pro version from: www.automated-bots.com
 
 #PRO FEATURE - browser you want the bot to run ex: ["Chrome"] or ["Firefox"]. Firefox is only supported in Pro feature
 browser = ["Chrome"]
 # Enter your Linkedin password and username below. Do not commit this file after entering these credentials.
 # Linkedin credentials
-email = "leoncyao@gmail.com"
-password = "Kerrisdale1!"
+# email = "leoncyao@gmail.com"
+# password = "x/q+/6*GM7,Uvst"
+# email = "neonleonyao@gmail.com"
+# password = "az4gmk5t8t3,VS@"
+
+email = "leon.yao@alumni.utoronto.ca"
+password = "tn93qShkV4G$3,Q"
 
 #PRO FEATURE - Optional! run browser in headless mode, no browser screen will be shown it will work in background.
 headless = False

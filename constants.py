@@ -6,6 +6,7 @@ angelCoUrl = "https://angel.co/login"
 globalLogicUrl = "https://www.globallogic.com/career-search-page/"
 
 jobsPerPage = 25
+max_urls = 600
 
 fast = 2
 medium = 3
@@ -13,7 +14,7 @@ slow = 5
 
 # botSpeed = slow
 # botSpeed = 1
-botSpeed = 1
+botSpeed = 0.5
 
 # Webdriver Elements 
 jobsPageUrl = "https://www.linkedin.com/jobs"

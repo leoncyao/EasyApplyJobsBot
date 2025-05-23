@@ -4,15 +4,17 @@ from login import connect_to_chrome, login_to_linkedin
 from pychrome_batch_applier import BatchJobApplier
 from pychrome_scraper import PyChromeLinkedInScraper
 import config
+from utils import _print
 
-def run_bot(email, password, verbose=False, skip_login=False, skip_scraping=False, retry_failed=False):
+def run_bot(email, password, skip_login=False, skip_scraping=False, retry_failed=False, verbose=False):
     """Run the complete LinkedIn bot process using Chrome DevTools Protocol"""
     print("\n=== Bot Configuration ===")
-    print(f"Email: {email}")
-    print(f"Skip Login: {skip_login}")
-    print(f"Skip Scraping: {skip_scraping}")
-    print(f"Retry Failed: {retry_failed}")
-    print(f"Verbose: {verbose}")
+    print(f"[INFO] Log Level: {config.log_level}")
+    print(f"[INFO] Email: {email}")
+    print(f"[INFO] Skip Login: {skip_login}")
+    print(f"[INFO] Skip Scraping: {skip_scraping}")
+    print(f"[INFO] Retry Failed: {retry_failed}")
+    print(f"[INFO] Verbose: {verbose}")
     print("=======================\n")
 
     browser = None
@@ -36,7 +38,7 @@ def run_bot(email, password, verbose=False, skip_login=False, skip_scraping=Fals
         # Scrape URLs if not skipped
         if not skip_scraping:
             print("\n=== Scraping Job URLs ===")
-            scraper = PyChromeLinkedInScraper(browser, tab)
+            scraper = PyChromeLinkedInScraper(browser, tab, verbose=verbose)
             scraper.scrape_job_urls()
         else:
             print("Skipping URL scraping as requested")
@@ -71,15 +73,10 @@ if __name__ == "__main__":
     # Get credentials from config.py if not provided via command line
     email = args.email or config.email
     password = args.password or config.password
-
-    # print(args.skip_login)
-    # print(args.verbose)
-    # time.sleep(1000)
     
     if not args.skip_login and (not email or not password):
         print("Error: LinkedIn credentials not found. Please provide them via command line arguments or in config.py")
         exit(1)
-    
 
     success = run_bot(
         email=email,
