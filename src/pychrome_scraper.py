@@ -1,7 +1,7 @@
 import time, random, json, os
-import utils, constants, config
 import pychrome
-from utils import _print
+from .utils import _print
+from .constants import *
 
 class PyChromeLinkedInScraper:
     def __init__(self, browser, tab, verbose=False):

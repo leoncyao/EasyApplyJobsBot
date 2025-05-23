@@ -1,8 +1,11 @@
 import time, random, os, json
-import utils, constants, config
 import pychrome
+from .utils import _print
+from .constants import *
+from dotenv import load_dotenv
 
-from utils import _print
+# Load environment variables from .env file
+load_dotenv()
 
 def connect_to_chrome(debugging_url="http://127.0.0.1:9222", verbose=False):
     """Connect to Chrome and set up the tab"""
@@ -81,25 +84,30 @@ def login_to_linkedin(tab, email, password, verbose=False):
 
 if __name__ == "__main__":
     import argparse
+    from dotenv import load_dotenv
+    import os
+    
+    # Load environment variables
+    load_dotenv()
     
     parser = argparse.ArgumentParser(description='Login to LinkedIn using Chrome DevTools')
     parser.add_argument('--debug-url', default="http://localhost:9222", 
                       help='Chrome DevTools debugging URL (default: http://localhost:9222)')
     parser.add_argument('--email',
-                      help='LinkedIn email address (defaults to config.py)')
+                      help='LinkedIn email address (defaults to .env)')
     parser.add_argument('--password',
-                      help='LinkedIn password (defaults to config.py)')
+                      help='LinkedIn password (defaults to .env)')
     parser.add_argument('--verbose', '-v', action='store_true',
                       help='Enable verbose output')
     
     args = parser.parse_args()
     
-    # Get credentials from config.py if not provided via command line
-    email = args.email or config.email
-    password = args.password or config.password
+    # Get credentials from .env if not provided via command line
+    email = args.email or os.getenv('EMAIL')
+    password = args.password or os.getenv('PASSWORD')
     
     if not email or not password:
-        print("Error: LinkedIn credentials not found. Please provide them via command line arguments or in config.py")
+        print("Error: LinkedIn credentials not found. Please provide them via command line arguments or in .env file")
         exit(1)
     
     try:

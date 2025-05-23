@@ -1,10 +1,7 @@
 import time, random, os, json
-import utils, constants, config
 import pychrome
-
-from utils import _print
-
-console_logs = []
+from .utils import _print
+from .constants import *
 
 class PyChromeJobApplier:
     def __init__(self, browser, tab, verbose=False):

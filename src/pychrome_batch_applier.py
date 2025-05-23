@@ -3,11 +3,13 @@ import time
 import argparse
 import os
 import random
-from pychrome_applier import PyChromeJobApplier
-import config
-from login import connect_to_chrome, login_to_linkedin
+from dotenv import load_dotenv
+from .pychrome_applier import PyChromeJobApplier
+from .login import connect_to_chrome, login_to_linkedin
+from .utils import _print
 
-from utils import _print
+# Load environment variables
+load_dotenv()
 
 class BatchJobApplier:
     def __init__(self, retry_failed=False, verbose=False, browser=None, tab=None):
@@ -142,19 +144,19 @@ class BatchJobApplier:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Batch apply to LinkedIn jobs from JSON file')
-    parser.add_argument('--email', default=config.email, help='LinkedIn email (defaults to config.py)')
-    parser.add_argument('--password', default=config.password, help='LinkedIn password (defaults to config.py)')
+    parser.add_argument('--email', default=os.getenv('EMAIL'), help='LinkedIn email (defaults to .env)')
+    parser.add_argument('--password', default=os.getenv('PASSWORD'), help='LinkedIn password (defaults to .env)')
     parser.add_argument('--headless', action='store_true', help='Run in headless mode')
     parser.add_argument('--verbose', '-v', action='store_true', help='Enable verbose output')
     
     args = parser.parse_args()
     
-    # Get credentials from config.py if not provided via command line
-    email = args.email or config.email
-    password = args.password or config.password
+    # Get credentials from .env if not provided via command line
+    email = args.email or os.getenv('EMAIL')
+    password = args.password or os.getenv('PASSWORD')
     
     if not email or not password:
-        print("Error: LinkedIn credentials not found. Please provide them via command line arguments or in config.py")
+        print("Error: LinkedIn credentials not found. Please provide them via command line arguments or in .env file")
         exit(1)
     
     try:

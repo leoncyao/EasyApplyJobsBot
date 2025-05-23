@@ -1,7 +1,12 @@
-import math,constants,config,time
+import math
+import time
 from typing import List
-
 from selenium import webdriver
+from dotenv import load_dotenv
+import os
+
+# Load environment variables
+load_dotenv()
 
 def chromeBrowserOptions():
     options = webdriver.ChromeOptions()
@@ -10,8 +15,8 @@ def chromeBrowserOptions():
     options.add_argument("--disable-extensions")
     options.add_argument('--disable-gpu')
     options.add_argument('--disable-dev-shm-usage')
-    if(config.headless):
-        options.add_argument("--headless")
+    if os.getenv('HEADLESS', 'False').lower() == 'true':
+        options.add_argument("--headless=new")
     options.add_argument("--start-maximized")
     options.add_argument("--disable-blink-features")
     options.add_argument("--disable-blink-features=AutomationControlled")
@@ -37,8 +42,11 @@ def _print(message, level="info", verbose=False):
     if not verbose:
         return
 
+    # Define allowed log levels
+    allowed_log_levels = ["info", "debug", "success", "warning", "error"]
+    
     # Only print if level exists in allowed_log_levels
-    if level in config.allowed_log_levels:
+    if level in allowed_log_levels:
         prefix = {
             "info": "ℹ️",
             "debug": "🔍",

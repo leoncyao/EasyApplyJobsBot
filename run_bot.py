@@ -1,15 +1,20 @@
 import argparse
 import time
-from login import connect_to_chrome, login_to_linkedin
-from pychrome_batch_applier import BatchJobApplier
-from pychrome_scraper import PyChromeLinkedInScraper
-import config
-from utils import _print
+import os
+from dotenv import load_dotenv
+
+# Import from src package
+from src.login import connect_to_chrome, login_to_linkedin
+from src.pychrome_batch_applier import BatchJobApplier
+from src.pychrome_scraper import PyChromeLinkedInScraper
+from src.utils import _print
+
+# Load environment variables from .env file
+load_dotenv()
 
 def run_bot(email, password, skip_login=False, skip_scraping=False, retry_failed=False, verbose=False):
     """Run the complete LinkedIn bot process using Chrome DevTools Protocol"""
     print("\n=== Bot Configuration ===")
-    print(f"[INFO] Log Level: {config.log_level}")
     print(f"[INFO] Email: {email}")
     print(f"[INFO] Skip Login: {skip_login}")
     print(f"[INFO] Skip Scraping: {skip_scraping}")
@@ -61,8 +66,8 @@ def run_bot(email, password, skip_login=False, skip_scraping=False, retry_failed
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='LinkedIn Job Application Bot')
-    parser.add_argument('--email', default=config.email, help='LinkedIn email (defaults to config.py)')
-    parser.add_argument('--password', default=config.password, help='LinkedIn password (defaults to config.py)')
+    parser.add_argument('--email', default=os.getenv('EMAIL'), help='LinkedIn email (defaults to .env)')
+    parser.add_argument('--password', default=os.getenv('PASSWORD'), help='LinkedIn password (defaults to .env)')
     parser.add_argument('--skip-scraping', action='store_true', help='Skip URL scraping and use existing job_urls.json')
     parser.add_argument('--retry-failed', action='store_true', help='Retry failed applications')
     parser.add_argument('--skip-login', action='store_true', help='Skip LinkedIn login (useful if already logged in)')
@@ -70,12 +75,12 @@ if __name__ == "__main__":
     
     args = parser.parse_args()
     
-    # Get credentials from config.py if not provided via command line
-    email = args.email or config.email
-    password = args.password or config.password
+    # Get credentials from .env if not provided via command line
+    email = args.email or os.getenv('EMAIL')
+    password = args.password or os.getenv('PASSWORD')
     
     if not args.skip_login and (not email or not password):
-        print("Error: LinkedIn credentials not found. Please provide them via command line arguments or in config.py")
+        print("Error: LinkedIn credentials not found. Please provide them via command line arguments or .env file")
         exit(1)
 
     success = run_bot(

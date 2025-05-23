@@ -1,0 +1,3 @@
+"""
+EasyApplyJobsBot package
+""" 
