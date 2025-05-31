@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from .pychrome_applier import PyChromeJobApplier
 from .login import connect_to_chrome, login_to_linkedin
 from .utils import _print
+from .constants import constants
 
 # Load environment variables
 load_dotenv()
@@ -20,6 +21,7 @@ class BatchJobApplier:
         self.verbose = verbose
         self.browser = browser
         self.tab = tab
+        self.successful_applications = 0
 
     def load_job_urls(self, json_file='data/job_data.json'):
         """Load job URLs from JSON file"""
@@ -34,97 +36,71 @@ class BatchJobApplier:
             return {}
 
     def process_jobs(self):
-        """Process all jobs in the queue"""
-        if not os.path.exists('data'):
-            os.makedirs('data')
+        """Process all jobs in the job_data.json file"""
+        try:
+            # Load job data
+            if not os.path.exists('data/job_data.json'):
+                _print("❌ No job data file found. Please run the scraper first.", level="error", verbose=self.verbose)
+                return False
 
-        # Load job data from JSON file
-        job_data = self.load_job_urls()
-        if not job_data:
-            _print("❌ No jobs to process", level="error", verbose=self.verbose)
-            return
+            with open('data/job_data.json', 'r', encoding='utf-8') as f:
+                job_data = json.load(f)
 
-        _print(f"📋 Found {len(job_data)} jobs to process", level="info", verbose=self.verbose)
+            _print(f"\n📊 Starting batch application process", level="info", verbose=self.verbose)
+            _print(f"📊 Total jobs to process: {len(job_data)}", level="info", verbose=self.verbose)
+            _print(f"📊 Target successful applications: {constants.max_successful_applications}", level="info", verbose=self.verbose)
 
-        # Initialize or load failed applications file
-        failed_apps_file = 'data/failed_applications.json'
-        if os.path.exists(failed_apps_file):
-            with open(failed_apps_file, 'r', encoding='utf-8') as f:
-                failed_apps = json.load(f)
-        else:
-            failed_apps = {}
-
-        # Initialize or load application results file
-        results_file = 'data/application_results.json'
-        if os.path.exists(results_file):
-            with open(results_file, 'r', encoding='utf-8') as f:
-                results = json.load(f)
-        else:
-            results = []
-
-        # Initialize JobApplier
-        self.applier = PyChromeJobApplier(self.browser, self.tab, self.verbose)
-        successful_applications = 0
-
-        for job_id, job in job_data.items():
-            try:
-                # Check if we've reached 50 successful applications
-                if successful_applications >= 50:
-                    _print(f"✅ Reached target of 50 successful applications", level="success", verbose=self.verbose)
+            self.applier = PyChromeJobApplier(browser=self.browser, tab=self.tab, verbose=self.verbose)
+            # Process each job
+            _print(f" Successfully created applier", level="info", verbose=self.verbose)
+            _print(f" job_data.items {len(job_data.items())}", level="info", verbose=self.verbose)
+            for job_id, job_info in job_data.items():
+                # Check if we've reached the maximum number of successful applications
+                if self.successful_applications >= constants.max_successful_applications:
+                    _print(f"\n✅ Reached maximum number of successful applications ({constants.max_successful_applications})", level="success", verbose=self.verbose)
                     break
 
-                _print(f"\n🔄 Processing job: {job['url']}", level="info", verbose=self.verbose)
-                
-                # Check job status
-                if job.get('status') == 'applied':
-                    _print(f"✅ Already applied to {job['url']}", level="info", verbose=self.verbose)
+                # Skip if already applied and not retrying failed
+                already_applied = False
+                if job_info['status'] == 'applied':
+                    _print(f"⏭️ Skipping job: {job_info['url']} (already applied)", level="info", verbose=self.verbose)
+                    self.skipped_count += 1
+                    already_applied = True
                     continue
-                elif job.get('status') == 'failed' and not self.retry_failed:
-                    _print(f"⚠️ Skipping previously failed job: {job['url']}", level="info", verbose=self.verbose)
+                elif job_info['status'] == 'failed' and not self.retry_failed:
+                    _print(f"⏭️ Skipping job: {job_info['url']} (previously failed)", level="info", verbose=self.verbose)
+                    self.skipped_count += 1
                     continue
-                success = self.applier.apply_to_job(job['url'])
-                
-                # Update job status in job_data.json
-                job_data[job_id]['status'] = 'applied' if success else 'failed'
 
-                # Save updated job_data.json
+                _print(f"\n🔄 Processing job: {job_info['url']}", level="info", verbose=self.verbose)
+                _print(f"📊 Current successful applications: {self.successful_applications}/{constants.max_successful_applications}", level="info", verbose=self.verbose)
+                _print(f"📊 Current stats - Applied: {self.successful_applications}, Failed: {self.failed_count}, Skipped: {self.skipped_count}", level="info", verbose=self.verbose)
+
+                # Apply to job
+                if self.applier.apply_to_job(job_info['url']):
+                    job_info['status'] = 'applied'
+                    if not already_applied:
+                        self.successful_applications += 1
+                    _print(f"✅ Successfully applied! ({self.successful_applications}/{constants.max_successful_applications} successful applications)", level="success", verbose=self.verbose)
+                else:
+                    job_info['status'] = 'failed'
+                    _print(f"❌ Failed to apply. ({self.successful_applications}/{constants.max_successful_applications} successful applications)", level="error", verbose=self.verbose)
+
+                # Save updated job data
                 with open('data/job_data.json', 'w', encoding='utf-8') as f:
                     json.dump(job_data, f, indent=2, ensure_ascii=False)
-                
-                # Log the result
-                result = {
-                    'job_id': job_id,
-                    'url': job['url'],
-                    'success': success,
-                    'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
-                }
-                results.append(result)
-                
-                # Save results after each job
-                with open(results_file, 'w', encoding='utf-8') as f:
-                    json.dump(results, f, indent=2, ensure_ascii=False)
-                
-                if success:
-                    successful_applications += 1
-                    _print(f"✅ Successful applications so far: {successful_applications}/50", level="success", verbose=self.verbose)
-                else:
-                    # Add to failed applications if not already there
-                    if job_id not in failed_apps:
-                        failed_apps[job_id] = job_data[job_id]
-                        with open(failed_apps_file, 'w', encoding='utf-8') as f:
-                            json.dump(failed_apps, f, indent=2, ensure_ascii=False)
-                        _print(f"❌ Added to failed applications: {job['url']}", level="error", verbose=self.verbose)
-                
-                time.sleep(random.uniform(1, 3))  # Random delay between jobs
-                
-            except Exception as e:
-                _print(f"❌ Error processing job {job['url']}: {str(e)}", level="error", verbose=self.verbose)
-                # Add to failed applications
-                if job_id not in failed_apps:
-                    failed_apps[job_id] = job_data[job_id]
-                    with open(failed_apps_file, 'w', encoding='utf-8') as f:
-                        json.dump(failed_apps, f, indent=2, ensure_ascii=False)
-                continue
+
+                # Add delay between applications
+                time.sleep(random.uniform(0.1, constants.botSpeed))
+
+            _print(f"\n=== Final Summary ===", level="info", verbose=self.verbose)
+            _print(f"✅ Total jobs processed: {len(job_data)}", level="success", verbose=self.verbose)
+            _print(f"✅ Successfully applied to: {self.successful_applications}/{constants.max_successful_applications} jobs", level="success", verbose=self.verbose)
+            return True
+
+        except Exception as e:
+            _print(f"❌ Error processing jobs: {str(e)}", level="error", verbose=self.verbose)
+            return False
 
     def _print_progress(self):
         """Print current progress"""

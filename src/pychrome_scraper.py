@@ -1,7 +1,8 @@
 import time, random, json, os
 import pychrome
 from .utils import _print
-from .constants import *
+from .constants import constants
+from .config import linkedin_job_search_url
 
 class PyChromeLinkedInScraper:
     def __init__(self, browser, tab, verbose=False):
@@ -59,11 +60,10 @@ class PyChromeLinkedInScraper:
 
     def scrape_job_urls(self):
         """Main method to scrape job URLs"""
+        url = linkedin_job_search_url
         job_data = self._load_job_urls()
         jobs_found = 0
-        url = "https://www.linkedin.com/jobs/search/?currentJobId=4233053228&f_AL=true&f_TPR=r86400&f_WT=2%2C1%2C3&geoId=90000070&keywords=software%20engineer&origin=JOB_SEARCH_PAGE_JOB_FILTER&refresh=true&sortBy=DD"
-        # url = "https://www.linkedin.com/jobs/search/?keywords=software%20engineer&location=Toronto%2C%20Ontario%2C%20Canada&f_TPR=r86400&f_WT=2&sortBy=DD"
-        _print(f"Processing URL: {url}", level="info", verbose=self.verbose)
+        max_new_jobs = 200  # Maximum number of new jobs to add
         
         try:
             # Navigate to the initial page
@@ -74,6 +74,11 @@ class PyChromeLinkedInScraper:
                 total_jobs_looked_at = constants.jobsPerPage * page
                 if total_jobs_looked_at >= constants.max_urls:
                     _print(f"Reached maximum URL limit of {constants.max_urls} (looked at {total_jobs_looked_at} jobs)", level="info", verbose=self.verbose)
+                    break
+
+                # Check if we've reached the maximum number of new jobs
+                if jobs_found >= max_new_jobs:
+                    _print(f"Reached maximum limit of {max_new_jobs} new jobs", level="info", verbose=self.verbose)
                     break
 
                 page_jobs = self._process_job_page(url, page)
@@ -90,7 +95,11 @@ class PyChromeLinkedInScraper:
                             'status': 'pending'
                         }
                         jobs_found += 1
-                        _print(f"Job {job_id} added to job_data.json", level="info", verbose=self.verbose)
+                        _print(f"Job {job_id} added to job_data.json ({jobs_found}/{max_new_jobs})", level="info", verbose=self.verbose)
+                        
+                        # Check if we've reached the maximum number of new jobs
+                        if jobs_found >= max_new_jobs:
+                            break
                     else:
                         _print(f"Job {job_id} already exists in job_data.json", level="info", verbose=self.verbose)
 
@@ -106,11 +115,11 @@ class PyChromeLinkedInScraper:
     def _save_job_urls(self, job_data):
         """Save job URLs to a JSON file"""
         try:
-            with open('data/job_data.json', 'w', encoding='utf-8') as f:
+            with open(constants.job_data_file, 'w', encoding='utf-8') as f:
                 json.dump(job_data, f, indent=2, ensure_ascii=False)
-            _print("Job URLs saved successfully to data/job_data.json", level="success", verbose=self.verbose)
+            _print("✅ Job URLs saved successfully", level="success", verbose=self.verbose)
         except Exception as e:
-            _print(f"Error saving job URLs: {str(e)}", level="error", verbose=self.verbose)
+            _print(f"❌ Error saving job URLs: {str(e)}", level="error", verbose=self.verbose)
 
 if __name__ == "__main__":
     import argparse

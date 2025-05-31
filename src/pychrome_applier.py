@@ -1,7 +1,7 @@
 import time, random, os, json
 import pychrome
 from .utils import _print
-from .constants import *
+from .constants import constants
 
 class PyChromeJobApplier:
     def __init__(self, browser, tab, verbose=False):
@@ -41,10 +41,16 @@ class PyChromeJobApplier:
             self.tab.Page.navigate(url=job_url)
             time.sleep(1)  # Wait for page load
 
+
+            continue_apply_button = self._find_continue_applying_button() 
+            if not continue_apply_button:
+                _print(f"🥳 No Continue Apply Button! Job: {job_url}", level="info", verbose=self.verbose)
+
+            _print("❌ No continue_applying button", level="error", verbose=self.verbose)
             # Check for Easy Apply button
             easy_apply_button = self._find_easy_apply_button()
             if not easy_apply_button:
-                _print(f"🥳 Already applied! Job: {job_url}", level="info", verbose=self.verbose)
+                _print(f"🥳 No Easy Apply Button! Job: {job_url}", level="info", verbose=self.verbose)
                 return True
 
             time.sleep(1)
@@ -143,7 +149,7 @@ class PyChromeJobApplier:
 
     def _complete_application_process(self):
         """Complete the multi-step application process"""
-        max_attempts = 10
+        max_attempts = constants.max_application_attempts
         attempt = 0
 
         while attempt < max_attempts:
@@ -155,6 +161,13 @@ class PyChromeJobApplier:
                 self._handle_application_form()
                 time.sleep(random.uniform(0.1, constants.botSpeed))
                 
+
+                try:
+                    continue_apply_button = self._find_continue_applying_button() 
+                except Exception as e:
+                    _print(f"{e}")
+                    _print(f"🥳 No Continue Apply Button! Job: {job_url}", level="info", verbose=self.verbose)
+
                 if not self._find_continue_button():
                     _print("❌ No continue button", level="error", verbose=self.verbose)
                     if not self._find_review_button():
@@ -290,6 +303,7 @@ class PyChromeJobApplier:
         script = """
         (function() {
             const input_responses = %s;
+            const default_value = "%s";
 
             function sleep(ms) {
                 const start = Date.now();
@@ -372,8 +386,8 @@ class PyChromeJobApplier:
                 }
 
                 // No match found, use default
-                console.log('  No match found, using default value: 5');
-                return '5';
+                console.log('  No match found, using default value: ' + default_value);
+                return default_value;
             }
 
             function fillInput(input) {
@@ -437,7 +451,7 @@ class PyChromeJobApplier:
                 results
             };
         })()
-        """ % json.dumps(input_responses)
+        """ % (json.dumps(input_responses), constants.default_text_input)
         
         result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
         result_value = result.get('result', {}).get('value', {})
@@ -452,8 +466,8 @@ class PyChromeJobApplier:
         # Log new questions
         try:
             # Read existing questions
-            if os.path.exists('data/questions.json'):
-                with open('data/questions.json', 'r', encoding='utf-8') as f:
+            if os.path.exists(constants.questions_file):
+                with open(constants.questions_file, 'r', encoding='utf-8') as f:
                     existing_texts = json.load(f)
             else:
                 existing_texts = []
@@ -468,7 +482,7 @@ class PyChromeJobApplier:
             if new_texts:
                 existing_texts.extend(new_texts)
                 # Save updated texts
-                with open('data/questions.json', 'w', encoding='utf-8') as f:
+                with open(constants.questions_file, 'w', encoding='utf-8') as f:
                     json.dump(existing_texts, f, indent=2, ensure_ascii=False)
                 _print(f"📝 Added {len(new_texts)} new parent texts to questions.json", level="info", verbose=self.verbose)
         
@@ -495,7 +509,7 @@ class PyChromeJobApplier:
                 results.push({ label });
                 
                 if (select.options.length > 1) {
-                    select.selectedIndex = 1;
+                    select.selectedIndex = %d;
                     select.dispatchEvent(new Event('change', { bubbles: true }));
                 }
             });
@@ -505,7 +519,8 @@ class PyChromeJobApplier:
                 fields: results 
             };
         })()
-        """
+        """ % constants.default_select_index
+        
         try:
             result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
             result_value = result.get('result', {}).get('value', {})
@@ -565,7 +580,7 @@ class PyChromeJobApplier:
 
                 // Default response if no match found
                 console.log('  No match found, using default response');
-                return 'I am a software engineer with a passion for building scalable and efficient systems.';
+                return "%s";
             }
 
             function fillTextarea(textarea) {
@@ -608,7 +623,7 @@ class PyChromeJobApplier:
                 results
             };
         })()
-        """
+        """ % constants.default_textarea
         
         result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
         result_value = result.get('result', {}).get('value', {})
@@ -621,6 +636,21 @@ class PyChromeJobApplier:
         _print(f"✅ Processed {len(results)} textarea fields", level="success", verbose=self.verbose)
         
         return True
+
+    def _find_continue_applying_button(self):
+        """Find and click the Continue button"""
+        script = """
+        (function() {
+            const button = document.querySelector('button[aria-label="I understand the tips and want to continue the apply process"]');
+            if (button) {
+                button.click();
+                return true;
+            }
+            return false;
+        })()
+        """
+        result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
+        return result.get('result', {}).get('value', False)
 
     def _find_continue_button(self):
         """Find and click the Continue button"""
