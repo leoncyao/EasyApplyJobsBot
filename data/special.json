@@ -1,0 +1,14 @@
+# fails because need to upload photo
+"4235612227": {
+    "url": "https://www.linkedin.com/jobs/view/4235612227",
+    "timestamp": "2025-05-27 06:01:30",
+    "status": "applied"
+},
+
+
+# failed because needed to enter date in correct format
+"4235810257": {
+    "url": "https://www.linkedin.com/jobs/view/4235810257",
+    "timestamp": "2025-05-27 06:01:30",
+    "status": "applied"
+  },
