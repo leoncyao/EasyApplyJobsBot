@@ -7,7 +7,6 @@ __pycache__/
 *.so
 config.py
 /Old
-/data
 .vscode/
 EasyApplyJobsBot/
 
@@ -183,5 +182,6 @@ angelco.py
 globalLogicCode.py
 linkedinProCode.py
 
-constants.py
 config.py
+
+/Old
