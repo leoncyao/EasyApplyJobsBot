@@ -19,6 +19,8 @@ A Python-based bot that automates the LinkedIn Easy Apply process using Chrome D
 
 ## Installation
 
+### Local Installation
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/EasyApplyJobsBot.git
@@ -35,84 +37,69 @@ pip install -r requirements.txt
 - Adjust bot speed and other parameters
 - Set your preferred job search criteria
 
-## Starting Chrome in Debug Mode
+### Docker Installation
 
-Before running the bot, you need to start Chrome in debugging mode:
-
-### Windows
-1. Create a file named `start_chrome.ps1` with the following content:
-```powershell
-$chromePath = "C:\Program Files\Google\Chrome\Application\chrome.exe"
-$debugPort = 9222
-$userDataDir = "$env:LOCALAPPDATA\Google\Chrome\Debug"
-
-# Create debug directory if it doesn't exist
-if (-not (Test-Path $userDataDir)) {
-    New-Item -ItemType Directory -Path $userDataDir | Out-Null
-}
-
-# Start Chrome with debugging enabled
-Start-Process $chromePath -ArgumentList "--remote-debugging-port=$debugPort", "--user-data-dir=`"$userDataDir`""
-```
-
-2. Run the script in PowerShell:
-```powershell
-.\start_chrome.ps1
-```
-
-### Linux
-1. Create a file named `start_chrome.sh` with the following content:
+1. Clone the repository:
 ```bash
-#!/bin/bash
-
-# Create debug profile directory if it doesn't exist
-DEBUG_DIR="$HOME/.config/chrome-debug"
-mkdir -p "$DEBUG_DIR"
-
-# Start Chrome with debugging enabled
-google-chrome \
-    --remote-debugging-port=9222 \
-    --user-data-dir="$DEBUG_DIR" \
-    --no-first-run \
-    --no-default-browser-check
+git clone https://github.com/yourusername/EasyApplyJobsBot.git
+cd EasyApplyJobsBot
 ```
 
-2. Make the script executable:
+2. Create your environment file:
 ```bash
-chmod +x start_chrome.sh
+cp .env.example .env
 ```
 
-3. Run the script:
+3. Edit `.env` with your credentials and settings:
 ```bash
-./start_chrome.sh
+nano .env
 ```
 
-### Mac
-1. Create a file named `start_chrome.sh` with the following content:
+4. Create data directory:
 ```bash
-#!/bin/bash
-
-# Create debug profile directory if it doesn't exist
-DEBUG_DIR="$HOME/Library/Application Support/Chrome/Debug"
-mkdir -p "$DEBUG_DIR"
-
-# Start Chrome with debugging enabled
-/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome \
-    --remote-debugging-port=9222 \
-    --user-data-dir="$DEBUG_DIR" \
-    --no-first-run \
-    --no-default-browser-check
+mkdir -p data
 ```
 
-2. Make the script executable:
+5. Build and run with Docker Compose:
 ```bash
-chmod +x start_chrome.sh
+docker-compose up -d
 ```
 
-3. Run the script:
+The bot will run in the background and restart automatically unless stopped.
+
+To view logs:
 ```bash
-./start_chrome.sh
+docker-compose logs -f
 ```
+
+To stop the bot:
+```bash
+docker-compose down
+```
+
+## Data Persistence
+
+- All data files are stored in the `data/` directory
+- The directory is mounted as a volume in Docker
+- Your data persists between container restarts
+
+## Environment Variables
+
+Copy `.env.example` to `.env` and configure:
+
+- `LINKEDIN_EMAIL`: Your LinkedIn email
+- `LINKEDIN_PASSWORD`: Your LinkedIn password
+- `HEADLESS`: Set to true for headless mode
+- `BOT_SPEED`: Bot operation speed (default: 0.5)
+- `MAX_APPLICATIONS`: Maximum applications per run
+- `CHROME_PROFILE_PATH`: Path to Chrome profile (optional)
+- `DEBUG_PORT`: Chrome debugging port
+- `KEYWORDS`: Job search keywords
+- `LOCATION`: Job search location
+- `DISTANCE`: Search radius in miles
+- `EXPERIENCE_LEVEL`: Experience level filter
+- `JOB_TYPE`: Job type filter
+- `WORKPLACE_TYPE`: Workplace type filter
 
 ## Usage
 

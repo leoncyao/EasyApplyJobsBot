@@ -28,6 +28,20 @@ class PyChromeJobApplier:
         time.sleep(2)
         return result
 
+    def _check_application_limit(self):
+        """Check if we've hit the daily application limit"""
+        script = """
+        (function() {
+            const errorMessage = document.querySelector('.artdeco-inline-feedback--error .artdeco-inline-feedback__message');
+            if (errorMessage && errorMessage.textContent.includes("You've reached the Easy Apply application limit for today")) {
+                return true;
+            }
+            return false;
+        })()
+        """
+        result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
+        return result.get('result', {}).get('value', False)
+
     def apply_to_job(self, job_url):
         """Main method to apply to a specific job"""
         time.sleep(1)
@@ -41,12 +55,17 @@ class PyChromeJobApplier:
             self.tab.Page.navigate(url=job_url)
             time.sleep(1)  # Wait for page load
 
+            # Check for application limit message
+            if self._check_application_limit():
+                _print("❌ Daily application limit reached. Please try again tomorrow.", level="error", verbose=self.verbose)
+                return False
 
+            # THIS IS THE BUTTON FOR WHEN WE SEE SKETCHY COMPANIES AND LINKEDIN
+            # WANTS US TO BE SAFE
             continue_apply_button = self._find_continue_applying_button() 
             if not continue_apply_button:
                 _print(f"🥳 No Continue Apply Button! Job: {job_url}", level="info", verbose=self.verbose)
 
-            _print("❌ No continue_applying button", level="error", verbose=self.verbose)
             # Check for Easy Apply button
             easy_apply_button = self._find_easy_apply_button()
             if not easy_apply_button:
@@ -65,87 +84,6 @@ class PyChromeJobApplier:
         except Exception as e:
             _print(f"Error during application process: {str(e)}", level="error", verbose=self.verbose)
             return False
-
-    def _find_easy_apply_button(self):
-        """Find the Easy Apply button using XPath"""
-        script = """
-        (function() {
-            const button = document.querySelector('div.jobs-apply-button--top-card button.jobs-apply-button');
-            if (button && button.textContent.toLowerCase().includes('easy')) {
-                button.click();
-                return true;
-            }
-            return false;
-        })()
-        """
-        result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
-        return result.get('result', {}).get('value', False)
-
-    def _check_for_bengali_home(self):
-        """Check if the page contains Bengali 'হোম' text in navigation elements"""
-        time.sleep(1)
-        script = """
-        (function() {
-            const targetText = "হোম";
-            console.log("Looking for text:", targetText);
-            
-            const elements = document.querySelectorAll('span.t-12.global-nav__primary-link-text');
-            console.log("Found elements:", elements.length);
-            
-            const bengaliElements = [];
-            
-            elements.forEach((element, index) => {
-                const title = element.getAttribute('title') || '';
-                const text = element.textContent.trim();
-                
-                console.log(`Element ${index}:`, {
-                    title: title,
-                    text: text,
-                    innerHTML: element.innerHTML
-                });
-                
-                if (title === targetText || text === targetText) {
-                    console.log("Match found!");
-                    bengaliElements.push({
-                        title: title,
-                        text: text,
-                        innerHTML: element.innerHTML
-                    });
-                }
-            });
-            
-            console.log("Total matches:", bengaliElements.length);
-            
-            if (bengaliElements.length > 0) {
-                return {
-                    found: true,
-                    elements: bengaliElements
-                };
-            }
-            return {
-                found: false,
-                elements: []
-            };
-        })()
-        """
-        result = self.tab.Runtime.evaluate(expression=script, returnByValue=True)
-
-        time.sleep(1)
-        result_value = result.get('result', {}).get('value', {})
-        
-        if result_value.get('found', False):
-            elements = result_value.get('elements', [])
-            for element in elements:
-                _print(f"🚨 Found 'হোম' in element:", level="warning", verbose=self.verbose)
-                _print(f"  Text Content: '{element['text']}'", level="debug", verbose=self.verbose)
-                _print(f"  Title: '{element['title']}'", level="debug", verbose=self.verbose)
-                _print(f"  Inner HTML: '{element['innerHTML']}'", level="debug", verbose=self.verbose)
-            self._set_language_to_english()
-
-            return False
-        else:
-            _print("✅ No 'হোম' text found in navigation elements.", level="success", verbose=self.verbose)
-            return True
 
     def _complete_application_process(self):
         """Complete the multi-step application process"""

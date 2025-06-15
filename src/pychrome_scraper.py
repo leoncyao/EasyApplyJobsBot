@@ -42,7 +42,7 @@ class PyChromeLinkedInScraper:
             _print(f"Error processing page {page_number}: {str(e)}", level="error", verbose=self.verbose)
             return []
 
-    def _load_job_urls(self):
+    def _load_job_data(self):
         """Load existing job data from JSON file"""
         if not os.path.exists('data'):
             os.makedirs('data')
@@ -61,7 +61,8 @@ class PyChromeLinkedInScraper:
     def scrape_job_urls(self):
         """Main method to scrape job URLs"""
         url = linkedin_job_search_url
-        job_data = self._load_job_urls()
+        _print(f"Scraping job URLs from {url}", level="info", verbose=self.verbose)
+        job_data = self._load_job_data()
         jobs_found = 0
         max_new_jobs = 200  # Maximum number of new jobs to add
         
@@ -69,12 +70,12 @@ class PyChromeLinkedInScraper:
             # Navigate to the initial page
             time.sleep(random.uniform(0.1, constants.botSpeed))
 
-            for page in range(100):
+            for page in range(0, 150):
                 # Check if we've reached the maximum number of URLs based on total jobs looked at
-                total_jobs_looked_at = constants.jobsPerPage * page
-                if total_jobs_looked_at >= constants.max_urls:
-                    _print(f"Reached maximum URL limit of {constants.max_urls} (looked at {total_jobs_looked_at} jobs)", level="info", verbose=self.verbose)
-                    break
+                # total_jobs_looked_at = constants.jobsPerPage * page
+                # if total_jobs_looked_at >= constants.max_urls:
+                #     _print(f"Reached maximum URL limit of {constants.max_urls} (looked at {total_jobs_looked_at} jobs)", level="info", verbose=self.verbose)
+                #     break
 
                 # Check if we've reached the maximum number of new jobs
                 if jobs_found >= max_new_jobs:

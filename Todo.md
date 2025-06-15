@@ -1,7 +1,6 @@
 # Todo List
 
 ## High Priority
-- [ ] "Continue Applying" check before clicking easy apply button 
 - [ ] Filter out senior positions
 - [ ] Implement AI responses based on question context for text inputs
 - [ ] Add file upload functionality when required
@@ -16,6 +15,7 @@
   - [ ] Add blacklist checking in job processing
 
 ## Completed
+- [x] "Continue Applying" check before clicking easy apply button 
 - [x] Add maximum job limit (50)
 - [x] Add successful applications counter
 - [x] Improve progress reporting

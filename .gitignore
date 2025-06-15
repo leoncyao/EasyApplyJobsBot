@@ -3,6 +3,34 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Data files
+data/*.json
+!data/.gitkeep
+
+# Virtual environment
+.venv/
+venv/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+
+# Docker
+.docker/
+
+# Logs
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
 # C extensions
 *.so
 config.py
@@ -122,15 +150,6 @@ celerybeat.pid
 
 # SageMath parsed files
 *.sage.py
-
-# Environments
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
 
 # Spyder project settings
 .spyderproject

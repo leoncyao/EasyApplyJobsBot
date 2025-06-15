@@ -8,7 +8,7 @@ class Constants:
 
     # Job Search Settings
     jobsPerPage = 25
-    max_urls = 600  # Maximum number of job URLs to scrape
+    max_urls = 600  # Maximum number of job URLs to inspect
     max_successful_applications = 200  # Maximum number of successful applications per run
 
     # Bot Speed Settings

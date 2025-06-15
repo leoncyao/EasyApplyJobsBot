@@ -81,6 +81,7 @@ def login_to_linkedin(tab, email, password, verbose=False):
     except Exception as e:
         _print(f"Error during login: {str(e)}", "error", verbose)
         raise
+    return True
 
 if __name__ == "__main__":
     import argparse

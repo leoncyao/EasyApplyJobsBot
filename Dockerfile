@@ -1,36 +1,65 @@
 # Use Python 3.11 as base image
 FROM python:3.11-slim
 
-# Install system dependencies
+# Install system dependencies and Chrome
 RUN apt-get update && apt-get install -y \
     git \
-    cron \
+    procps \
+    wget \
+    gnupg \
+    && wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key add - \
+    && echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google.list \
+    && apt-get update \
+    && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
 # Install UV
 RUN pip install uv
 
-# Clone the repository
-RUN git clone https://github.com/leoncyao/EasyApplyJobsBot /app
-
-# Set working directory
+# Create app directory
 WORKDIR /app
 
-RUN uv venv
+# Copy only the necessary files first
+COPY requirements.yaml .
+COPY src/ src/
+COPY main.py .
+COPY .env.example .env
+COPY scripts/linux/kill_chrome.sh /usr/local/bin/kill_chrome.sh
+COPY scripts/linux/start_chrome.sh /usr/local/bin/start_chrome.sh
+
+# Make scripts executable
+RUN chmod +x /usr/local/bin/kill_chrome.sh /usr/local/bin/start_chrome.sh
+
+# Create data directory
+RUN mkdir -p data
 
 # Install requirements using UV
+RUN uv venv
 RUN uv pip install -r requirements.yaml
 
-# Create a script to run the bot
-RUN echo '#!/bin/bash\npython3 linkedin.py' > /app/run_bot.sh && \
-    chmod +x /app/run_bot.sh
+# Create volume for persistent data
+VOLUME ["/app/data"]
 
-# Set up cron job to run at 12 AM daily
-RUN echo "0 0 * * * /app/run_bot.sh >> /var/log/cron.log 2>&1" > /etc/cron.d/easy-apply-cron && \
-    chmod 0644 /etc/cron.d/easy-apply-cron
+# Create startup script
+RUN echo '#!/bin/bash\n\
+# Kill any existing Chrome processes\n\
+kill_chrome.sh\n\
+\n\
+# Start Chrome in the background\n\
+start_chrome.sh &\n\
+CHROME_PID=$!\n\
+\n\
+# Wait for Chrome to start\n\
+sleep 5\n\
+\n\
+# Run the bot\n\
+uv run main.py --verbose --retry-failed\n\
+\n\
+# Kill Chrome after bot finishes\n\
+kill_chrome.sh\n\
+' > /app/start.sh && chmod +x /app/start.sh
 
-# Create log file
-RUN touch /var/log/cron.log
+# Run the bot
+CMD ["/app/start.sh"]
 
-# Start cron in foreground
-CMD cron && tail -f /var/log/cron.log 
+
